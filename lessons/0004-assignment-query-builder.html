@@ -1,0 +1,16 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>第 4 课：从作业题目生成检索 Query</title><link rel="stylesheet" href="../assets/lesson.css"><script defer src="../assets/quiz.js"></script></head><body><main>
+<div class="eyebrow">HP 教学资料 RAG · 无缓存示例</div><h1>同一个算式，可能对应不同教学主题</h1><p class="lead">本课目标：用题意与已有解法组织检索主题，再将主题转成教材和教参查询。</p>
+<p>聊天 Agent 决定何时调用教学资料检索；检索工具中的 Query Builder 把作业内容转成查询。固定按钮 Workflow 则可以直接执行同一检索工具。Query Builder 使用 LLM，不会自动使固定 Workflow 成为 Agentic RAG。</p>
+<table><thead><tr><th>题目</th><th>教学检索主题</th></tr></thead><tbody><tr><td>Q1：3/4 ÷ 2/5<br>Q2：5/6 ÷ 1/3</td><td>分数除法计算：除法转为乘倒数</td></tr><tr><td>Q3：3/4 升果汁，每杯 1/8 升，能装几杯？</td><td>已知总量与每份量，求份数</td></tr><tr><td>Q4：绳子全长的 2/5 是 3/4 米，求全长</td><td>已知部分量与对应分率，求整体</td></tr></tbody></table>
+<p>Q1 与 Q4 的算式相同，均为 3/4 ÷ 2/5。但 Q4 的教学重点包括单位1和部分—整体关系。仅匹配算式不能完成这一区分。</p>
+<h2>主题怎样变成 Query</h2><p>将教师任务对应的资料需求加到主题上：教材方法、算理、教参重难点与课堂引导。先依据输入确定关系，再提出检索需求；不要预先编造教材结论。</p><pre>Q1、Q2 → 分数除法计算
+  → 分数除法转化为乘倒数的计算法则与算理
+
+Q3 → 总量÷每份量求份数
+  → 分数除法中已知总量和每份量求份数的数量关系
+
+Q4 → 部分量÷对应分率求整体
+  → 已知一个数的几分之几是多少求这个数，单位1的识别方法</pre>
+<h2>规则与 LLM 各自需要什么</h2><p>规则可以匹配已有解析中的“除数取倒数”“总量÷每份量”“单位1”等明确表达，再套查询模板。解析没有这些表达时，规则应返回未识别，不能假装从运算符推导出了题意。LLM 可以结合题干与解法完成语义归纳，但仍需服务端验证题号、数量、长度和输出结构。</p>
+<div class="card" data-quiz data-explanation="算式相同不意味着题意、数量关系和教学检索需求相同。" data-hint="Q4 的单位1与部分—整体关系从哪里来？"><p>Q1 与 Q4 算式相同，生成检索主题时最需要比较什么？</p><button data-correct="true">题意关系</button><button data-correct="false">数组维度</button><button data-correct="false">数字个数</button><p class="feedback" aria-live="polite"></p></div>
+<footer><p><a href="../reference/assignment-query-builder-prompt.txt">完整 Prompt 与四题输入</a> · <a href="https://docs.langchain.com/oss/python/deepagents/retrieval">主阅读：LangChain RAG 架构</a> · <a href="0003-hybrid-retrieval-and-rrf.html">上一课：混合召回与 RRF</a></p><p>本课为设计示例，不代表项目已实现或已经验证归纳准确率。可以继续在聊天中提问。</p></footer></main></body></html>

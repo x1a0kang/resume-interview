@@ -1,0 +1,13 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>第 2 课：一句话如何进入 BM25 搜索</title><link rel="stylesheet" href="../assets/lesson.css"><script defer src="../assets/quiz.js"></script></head><body><main>
+<div class="eyebrow">HP 教材 RAG · 约 3 分钟 · 核实于 2026-10-13</div><h1>一句话也可以直接做 BM25 搜索</h1><p class="lead">本课目标：理解分词、倒排索引和评分如何合作，区分它们与 Embedding。</p>
+<h2>先分清两条链路</h2><pre>Dense：文本 → Embedding 模型 → 稠密向量 → 向量相似度搜索
+BM25：文本 → 文本分析与分词 → 倒排索引候选 → 统计相关性评分</pre><p>Embedding 是生成向量的过程；Dense 指稠密向量表示，Dense Retrieval 指用这种向量搜索。Embedding 模型还可能输出 Sparse 或多个向量，因此两者并不等同。</p>
+<h2>准备教材</h2><p>每个 Chunk 的标题和正文经分词、规范化，生成检索词。下表只是示意，具体结果取决于中文 analyzer 配置。</p><div class="card"><table><thead><tr><th>词</th><th>包含它的 Chunk</th></tr></thead><tbody><tr><td>分数</td><td>A、B、C</td></tr><tr><td>除法</td><td>A、C</td></tr><tr><td>倒数</td><td>A、D</td></tr></tbody></table><p>这是倒排索引：从词找到包含它的片段，避免每次逐篇扫描。</p></div>
+<h2>收到问题</h2><pre>“分数除法为什么要取倒数？”
+→ 搜索引擎分析句子（示例保留词：分数、除法、倒数）
+→ 按查询匹配规则取得候选
+→ BM25 根据词频、词的稀有程度和片段长度评分
+→ 返回 TopN</pre><p>你可以将整句话传给 ES 的 <code>match</code> 查询。独立的关键词提取模型不是必需环节。分词、停用词、同义词等由 analyzer 配置决定，不能假定所有疑问词都会自动被删除；条件词也不应盲目丢弃。</p><p>用户只说“为什么错了”时，需要先结合当前题目和错因形成有信息的检索句子。Query Builder 补的是教学意图，这和搜索引擎把句子分成词是不同职责。</p>
+<h2>一个判断</h2><div class="card" data-quiz data-explanation="普通全文查询可直接传整句，由搜索引擎分析；模型改写只在确有需要时增加。" data-hint="分词是搜索引擎已有的处理环节。"><p>搜索“分数除法为什么要取倒数”，BM25 要求的前置处理是？</p><button data-correct="false">必须模型抽词</button><button data-correct="false">必须句子向量</button><button data-correct="true">引擎分析文本</button><p class="feedback" aria-live="polite"></p></div>
+<h2>ES 还是 VikingDB？</h2><p>ES 明确支持 BM25 和丰富的 analyzer、查询控制。VikingDB V2 官方关键词接口也提供 <code>mode="bm25"</code>，要求配置 <code>FullText</code>，不能将这个模式与学习型 Sparse Embedding 混为一谈。</p><p>HP 已有 ES 时，ES BM25 + VikingDB Dense 可作为可控基线。若目标是少维护索引，可测试 VikingDB FullText BM25 + Dense，在相同 Chunk、过滤、融合和重排条件下比较。国内账号实际能力以具体版本为准。</p>
+<footer><p>主阅读：<a href="https://www.elastic.co/docs/solutions/search/full-text/how-full-text-works">Elastic 全文检索流程</a>。另见 <a href="https://docs.byteplus.com/en/docs/VikingDB/Keyword_Search_V2">VikingDB V2 关键词模式</a>、<a href="https://github.com/volcengine/OpenViking/blob/main/docs/zh/guides/01-configuration.md">火山官方集成配置</a>。</p><p><a href="0001-embedding-dimensions.html">上课：向量维度</a> · <a href="../reference/rag-role-map.html">分工速查</a>。任何不清楚的地方都可以继续在聊天中提问。</p></footer></main></body></html>

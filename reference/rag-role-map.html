@@ -1,0 +1,13 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>RAG 工程分工速查</title><link rel="stylesheet" href="../assets/lesson.css"></head><body><main>
+<div class="eyebrow">HP RAG 速查 · 2026-10-13</div><h1>模型、算法与存储各做什么</h1>
+<table><thead><tr><th>环节</th><th>输入 → 输出</th><th>是否需要模型</th></tr></thead><tbody><tr><td>解析/OCR</td><td>文件/页图 → 段落、标题、公式和图表</td><td>原生文本提取可不需要；扫描件通常需要</td></tr><tr><td>分块</td><td>章节与内容 → 完整教学单元</td><td>规则优先，模型辅助可选</td></tr><tr><td>Embedding</td><td>Query 或 Chunk → 数字向量</td><td>需要 Embedding 模型</td></tr><tr><td>BM25</td><td>查询词与候选文本 → 关键词相关性排名</td><td>统计算法，不需要大模型</td></tr><tr><td>Dense</td><td>查询向量与文档向量 → 相似度排名</td><td>生成向量需要模型，索引搜索本身不等于调用大模型</td></tr><tr><td>RRF</td><td>多路排名 → 融合排名</td><td>不需要模型</td></tr><tr><td>Rerank</td><td>Query + 候选原文 → 相关性分数</td><td>通常使用重排模型</td></tr><tr><td>生成</td><td>用户问题 + 教材证据 + 业务事实 → 讲解</td><td>需要生成模型</td></tr></tbody></table>
+<h2>原文保存的两种合理方式</h2><pre>小型 RAG：向量数据库保存 chunk_id + 原文 + 向量 + metadata
+
+HP 可选：
+MySQL：权威原文、教学关系、版本和状态
+ES：检索文本 + chunk_id + 必要过滤字段
+VikingDB：向量 + chunk_id + 必要过滤字段
+在线：候选 ID → 批量取原文 → 重排 → 生成</pre><p>也可以在检索库冗余文本以减少回查，但仍要定义哪个版本是权威版本。最终上下文使用可追溯的原文，不能只有向量。</p>
+<h2>当前推荐候选</h2><p>中文文本 Embedding 对照：<a href="https://huggingface.co/BAAI/bge-m3">BGE-M3</a>、<a href="https://huggingface.co/Qwen/Qwen3-Embedding-0.6B">Qwen3-Embedding-0.6B</a>。火山部署优先验证 <a href="https://docs.volcengine.com/docs/ark/vectorization?lang=en&redirect=1">doubao-embedding-vision-251215</a>，1024 维可作为初始配置。</p><p>文本重排对照：<a href="https://huggingface.co/BAAI/bge-reranker-v2-m3">BGE Reranker v2 M3</a>、<a href="https://huggingface.co/Qwen/Qwen3-Reranker-0.6B">Qwen3-Reranker-0.6B</a>。火山托管可验证 <a href="https://docs.volcengine.com/docs/vector_database_vikingdb/Rerank?lang=zh">base-multilingual-rerank / doubao-seed-rerank</a>。</p><p>这些是官方资料明确的候选，不是跨平台使用量排名或 HP 教材实测最佳。平台名称、参数和模型生命周期以实际使用的产品接口为准。</p>
+<footer><a href="../lessons/0001-embedding-dimensions.html">返回维度小课</a> · <a href="https://www.elastic.co/docs/reference/elasticsearch/index-settings/similarity">BM25 官方说明</a></footer>
+</main></body></html>

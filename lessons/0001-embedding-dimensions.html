@@ -1,0 +1,15 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>第 1 课：向量维度与文本长度</title><link rel="stylesheet" href="../assets/lesson.css"><script defer src="../assets/quiz.js"></script></head><body><main>
+<div class="eyebrow">HP 教学资料 RAG · 约 3 分钟 · 核实于 2026-10-13</div>
+<h1>文本变长，向量不一定变长</h1>
+<p class="lead">本课的目标：区分文本长度、向量维度和模型参数量，正确配置一个教材向量索引。</p>
+<p>普通单向量 Dense 检索中，一段文本被压成一个固定长度的数字数组。使用同一模型和同一输出配置，20 字和 500 字都可以生成 1024 个数字。模型输入上限约束的是文本能否完整处理，不决定输出维度。</p>
+<div class="card"><table><thead><tr><th>概念</th><th>表示什么</th></tr></thead><tbody><tr><td>文本长度</td><td>送入模型的 token 数，影响输入限额与计算成本。</td></tr><tr><td>1024 维</td><td>输出数组包含 1024 个数字。</td></tr><tr><td>0.6B 参数</td><td>模型约有 6 亿参数，与输出 1024 维是不同概念。</td></tr></tbody></table></div>
+<p>维度上限由模型决定；支持降维的模型允许你在规定范围内选择输出维度。向量索引的字段维度与实际输出一致。<a href="https://huggingface.co/Qwen/Qwen3-Embedding-0.6B">Qwen 官方模型卡</a>列出 0.6B 版本最高 1024 维及可配置输出范围。</p>
+<h2>看看维度影响了什么</h2><div class="card"><label>片段数 <input id="count" type="number" min="1" value="1000000"></label><br><label>输出维度 <select id="dimension"><option>512</option><option selected>1024</option><option>2048</option></select></label><p id="storage" aria-live="polite"></p><p class="muted">这里只计算片段数 × 维度 × 4 字节。不含索引、原文、元数据、副本和系统开销；量化格式也会改变实际空间。能否选择某维度须按具体模型确认。</p></div>
+<h2>三个小判断</h2>
+<div class="card" data-quiz data-explanation="同一模型、同一输出配置下，向量维度保持一致。" data-hint="文本长度和输出维度属于两个配置边界。"><p>1. 使用同一模型与 1024 维配置，将 50 字输入换成 500 字，结果会怎样？</p><button data-correct="false">自动增维</button><button data-correct="true">保持定维</button><button data-correct="false">随机降维</button><p class="feedback" aria-live="polite"></p></div>
+<div class="card" data-quiz data-explanation="同为 1024 维的不同模型，其语义空间仍可能不同。换模型应重新向量化文档并建立对应索引。" data-hint="数组一样长，只证明长度兼容。"><p>2. 库内向量来自 BGE，查询向量来自 Qwen，两者都是 1024 维。应怎样处理？</p><button data-correct="true">统一模型</button><button data-correct="false">直接混搜</button><button data-correct="false">补齐零值</button><p class="feedback" aria-live="polite"></p></div>
+<div class="card" data-quiz data-explanation="召回候选后仍须取得原文，才能重排和交给生成模型；原文可与向量同存，也可通过稳定 ID 读取。" data-hint="数字数组不能直接当作教材原文阅读。"><p>3. 向量索引返回 chunk_id 后，最终回答通常还需要什么？</p><button data-correct="false">随机数字</button><button data-correct="false">模型权重</button><button data-correct="true">对应原文</button><p class="feedback" aria-live="polite"></p></div>
+<footer><p>主阅读：<a href="https://huggingface.co/Qwen/Qwen3-Embedding-0.6B">Qwen3-Embedding-0.6B 官方模型卡</a>。接着可看<a href="../reference/rag-role-map.html">RAG 工程分工速查</a>。</p><p>任何不清楚的地方都可以继续在聊天中提问，无需先完成练习。</p></footer>
+</main></body></html>

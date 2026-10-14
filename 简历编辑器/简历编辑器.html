@@ -215,15 +215,17 @@
       .paper {
         width: var(--a4-width);
         min-height: var(--a4-height);
-        height: var(--a4-height);
+        height: auto;
         margin: 0;
         padding: 13.2mm 15.6mm 13.5mm;
-        overflow: hidden;
+        overflow: visible;
         box-shadow: none;
         page-break-after: always;
         break-after: page;
       }
       .paper:last-child { page-break-after: auto; break-after: auto; }
+      .record { break-inside: avoid; page-break-inside: avoid; }
+      .section-title { break-after: avoid; page-break-after: avoid; }
       [contenteditable="true"]:hover, [contenteditable="true"]:focus { background: transparent; box-shadow: none; }
       .photo-control::after { display: none; }
       .print-note { display: block; }
@@ -293,15 +295,17 @@
         <div class="record">
           <div class="record-head"><span class="date" contenteditable="true" data-key="deepDate">2025.08—2026.08</span><span class="record-name" contenteditable="true" data-key="deepCompany">深启智能科技有限公司</span><span class="role" contenteditable="true" data-key="deepRole">后端开发工程师</span></div>
           <ul class="bullets">
-            <li contenteditable="true" data-key="deepWork1">负责慧批 AI 作业批改与智能学情平台的后端研发，覆盖批改业务中台、学情分析及多角色 Agent/RAG 应用。</li>
-            <li contenteditable="true" data-key="deepWork2">主导 HP-Grading、ChatBI 架构与业务开发；协同算法工程师完成 xEduAI 的跨模块协议、算法联调与交付，支撑教师、学生、家长三端业务。</li>
+            <li contenteditable="true" data-key="deepWork1">负责慧批批改与学情业务的后续开发和维护，参与面向教师、学生、家长的 Agent/RAG 应用研发。</li>
+            <li contenteditable="true" data-key="deepWork2">承担 HP-Grading 与 ChatBI 业务开发，协同算法工程师完成 xEduAI 的数据协议与链路联调。</li>
+            <li contenteditable="true" data-key="deepWork3">参与教学 Agent 与资源 RAG 的设计和开发，围绕教师讲评、学生答疑及家长报告建设业务工具、任务编排与多轮交互，衔接教学资料入库、检索及证据组织，将批改和学情数据用于 AI 应用。</li>
           </ul>
         </div>
         <div class="record">
           <div class="record-head"><span class="date" contenteditable="true" data-key="eastDate">2021.07—2024.06</span><span class="record-name" contenteditable="true" data-key="eastCompany">东方财富信息股份有限公司</span><span class="role" contenteditable="true" data-key="eastRole">证券产品研发部 / 创新业务部</span></div>
           <ul class="bullets">
-            <li contenteditable="true" data-key="eastWork1">担任大模型智能助手后端负责人，完成项目 0 到 1 的架构与核心开发；同时参与智能在线客服、资讯推荐数据平台等项目。</li>
-            <li contenteditable="true" data-key="eastWork2">负责需求评审、发布、Code Review 与流程规范；入选管理人才培养计划（Top 10%），获季度、年度 S 绩效及 2023 年度优秀员工（Top 1%）。</li>
+            <li contenteditable="true" data-key="eastWork1"><b>项目开发：</b>担任大模型智能助手后端负责人，从 0 到 1 搭建项目架构并主导开发，上线后累计用户 2W+；担任智能在线客服后端负责人，将消息处理能力提升 20 倍以上；负责资讯流推荐埋点及日志数据仓库模块，主导 ClickHouse 落地，实现亿级数据毫秒级查询；参与财富号自动打标框架、大模型训练数据标准化等项目开发。</li>
+            <li contenteditable="true" data-key="eastWork2"><b>项目管理：</b>负责需求评审与拆分、组内代码合并及管理、CI/CD 平台管理、项目提测与发布，主持组内 Code Review；制定组内标准操作程序并撰写文档，其中代码管理规范与项目发布流程规范被采纳为部门规范。</li>
+            <li contenteditable="true" data-key="eastWork3"><b>个人成绩：</b>入选公司管理人才培养计划（Top 10%），获季度、年度 S 绩效及公司 2023 年度优秀员工（Top 1%）。</li>
           </ul>
         </div>
       </section>
@@ -309,15 +313,15 @@
       <section class="section" aria-label="项目经历开始">
         <h2 class="section-title" contenteditable="true" data-key="projectsTitle">项目经历</h2>
         <div class="record">
-          <div class="record-head"><span class="date" contenteditable="true" data-key="hpDate">2025.08—2026.08</span><span class="record-name" contenteditable="true" data-key="hpName">深启智能科技有限公司｜慧批 AI 作业批改与智能学情平台</span><span class="role" contenteditable="true" data-key="hpRole">后端 / AI应用负责人</span></div>
-          <p class="meta" contenteditable="true" data-key="hpIntro"><b>项目简介：</b>面向中学作业场景的 AI 批改、学情分析与教学助手平台；通过 Java 业务中台和 RabbitMQ 编排 Python 算法平台，结合多角色 Agent 与教学资源 RAG 支撑讲评、答疑、备课及学习报告。</p>
+          <div class="record-head"><span class="date" contenteditable="true" data-key="agentDate">2025.08—2026.08</span><span class="record-name" contenteditable="true" data-key="agentName">深启智能｜教学 Agent 与资源 RAG</span><span class="role" contenteditable="true" data-key="agentRole">AI 应用开发</span></div>
+          <p class="meta" contenteditable="true" data-key="agentIntro"><b>项目简介：</b>面向教师讲评与备课、学生错题答疑、家长学习报告，参与独立 Python AI 应用层研发；通过业务工具查询 HP/ChatBI 的批改与学情事实，通过教学资源 RAG 补充教材方法和解释依据。</p>
           <ul class="bullets">
-            <li contenteditable="true" data-key="hp1">主导 HP-Grading 和 ChatBI 架构、开发与维护，完成“定标—识别—批改—分析—报告”闭环；累计试用学校 100+ 所、常规使用 50+ 所，其中 5—10 所为跨年级高频使用。</li>
-            <li contenteditable="true" data-key="hp2">通过 RabbitMQ 编排 OCR、题目结构化、答案解析、作答识别及逐空/作文批改，以 requestId + version + 状态机处理任务追踪、回调乱序、幂等重试和异常恢复；定标通常 5 分钟内、常规批改通常 3 分钟内完成（随图片数波动）。</li>
-            <li contenteditable="true" data-key="hp3">建设确定性学情分析层，覆盖题目正确率、错题/知识点、学生学习状态、班级周报及教师/学校/区域分析，支持大模型建议和 PDF/Excel 报表；测试集综合批改准确率超过 96%，数学超过 97%。</li>
-            <li contenteditable="true" data-key="hp4">完成教师、学生、家长多角色 Agent 的研发验证：使用 FastAPI、LangChain/LangGraph，以“任务按钮直达 Workflow、自由文本进入 Agent”分流，并由 checkpoint 保存多轮会话状态。</li>
-            <li contenteditable="true" data-key="hp5">将 ChatBI 分析、HP 作业/题目/批改事实、题库推荐及草案/文件产物封装为 10 个高层 Domain Tools，在执行端复核教师—班级、家长—孩子和学生本人数据域。</li>
-            <li contenteditable="true" data-key="hp6">完成教材、教参和辅导资料 RAG Pipeline 的研发验证，覆盖解析/OCR、语义分块、Embedding、BM25 + Dense 混合召回、元数据过滤、Rerank 与 Evidence Pack，并以 Trace、审计和 Evaluation Harness 验证检索、引用、权限与异常恢复。</li>
+            <li contenteditable="true" data-key="agent1"><b>Agent 任务编排：</b>参与 FastAPI、LangChain/LangGraph 应用研发，设计“任务按钮携带 actionCode 直达 Workflow、自由文本进入角色 Agent”的双入口；通过模型—工具—观察结果循环完成条件追问、任务规划和多步执行。</li>
+            <li contenteditable="true" data-key="agent2"><b>领域工具与权限：</b>围绕班级作业分析、学生学习报告、题目/批改详情、推荐题及文件产物定义高层 Tool 和结构化参数；按角色与页面上下文筛选工具，在执行端校验教师—班级、家长—孩子和学生本人数据域。</li>
+            <li contenteditable="true" data-key="agent3"><b>多轮状态与执行控制：</b>设计以 threadId 关联的 LangGraph checkpoint，保存消息、当前目标、已知约束和工具结果，支持“只讲后三题”“缩短讲评”等连续调整；梳理工具超时、调用次数上限和失败反馈，控制无效循环。</li>
+            <li contenteditable="true" data-key="agent4"><b>教学资料入库：</b>参与教材、教参和辅导资料 RAG 管线设计与开发，按章节及语义组织 Chunk，保留定义、公式、例题与讲解上下文；维护资料版本、章节路径和有效状态，生成 Embedding 并建立 VikingDB 检索索引。</li>
+            <li contenteditable="true" data-key="agent5"><b>混合召回与重排：</b>设计将题目转为概念、解法和公式文字化查询，先过滤学段、学科、年级及教材版本，再执行 BM25 + Dense 多路召回、RRF 融合去重与 Rerank，减少纯公式题和错误教材版本带来的召回偏差。</li>
+            <li contenteditable="true" data-key="agent6"><b>证据组织与质量验证：</b>设计 Evidence Pack 关联 documentId、version、chunkId 与章节，供生成和问题回溯；业务统计由 ChatBI 计算，模型据此生成解释；围绕工具选择、权限、检索相关性、证据不足及引用一致性设计评测用例。</li>
           </ul>
         </div>
       </section>
@@ -326,6 +330,19 @@
     <article class="paper page-two" data-page="2">
       <section class="section compact" aria-label="项目经历续页">
         <h2 class="section-title" contenteditable="true" data-key="projectsContinueTitle">项目经历（续）</h2>
+        <div class="record">
+          <div class="record-head"><span class="date" contenteditable="true" data-key="hpDate">2025.08—2026.08</span><span class="record-name" contenteditable="true" data-key="hpName">深启智能｜慧批作业批改与学情平台</span><span class="role" contenteditable="true" data-key="hpRole">后端开发</span></div>
+          <p class="meta" contenteditable="true" data-key="hpIntro"><b>项目简介：</b>HP-Grading（Java 中台）、xEduAI（Python 算法）与 ChatBI（学情分析）组成纸质作业处理闭环。接手业务维护及后续开发，协同算法工程师联调；产品累计试用 100+ 所学校、常规使用约 50 所。</p>
+          <ul class="bullets">
+            <li contenteditable="true" data-key="hp1"><b>普通作业：</b>维护教师原卷 OCR、题目/小空结构化、答案解析与定标，衔接学生作答识别和逐空评分；支持答案、分值及批改结果修订后重批，按题目与 blank 关联作答、得分和点评。常规定标通常 5 分钟内、批改通常 3 分钟内完成（随图片数波动），测试集综合批改准确率超过 96%。</li>
+            <li contenteditable="true" data-key="hp2"><b>作文批改：</b>协同算法侧对接作文题解析、跨页全文识别及评分链路，维护题目要求、参考材料和评分结果；支持独立作文的系统/教师评分标准、结果查询与调分，兼容普通作业中的作文分流。</li>
+            <li contenteditable="true" data-key="hp3"><b>答题卡处理：</b>开发答题卡识别与结果处理，衔接模板结构、学生作答与题目/小空映射；对接专用解析和批改任务，处理回调、结果落库及查询，复用普通批改的数据模型。</li>
+            <li contenteditable="true" data-key="hp4"><b>RabbitMQ 异步流程：</b>维护 Java 与 Python 间的分阶段任务编排，以 requestId、version 和持久化状态关联回调、拦截旧结果；结合手动 ACK、失败重试、XXL-Job 补偿及 Prometheus 分阶段耗时定位异常。</li>
+            <li contenteditable="true" data-key="hp5"><b>学情分析：</b>开发维护作业题目正确率、错题与知识点分布、学生提交和得分分析，并按学生、班级、教师、学校、区域聚合，向教学看板与上层业务提供确定性统计。</li>
+            <li contenteditable="true" data-key="hp6"><b>学习与教学建议：</b>开发面向学生、教师的 AI 总结，将成绩、错误分布及知识点等分析事实组织为模型输入，生成学习改进和教学讲评建议；统计计算与模型文字解释分层，支持异步生成和结果查询。</li>
+            <li contenteditable="true" data-key="hp7"><b>周报与结果交付：</b>维护学生/班级周报及 PDF、Excel 报表，汇总周期内作业表现与分析建议，支持教师查看班级整体学情及学生个人学习情况。</li>
+          </ul>
+        </div>
         <div class="record">
           <div class="record-head"><span class="date" contenteditable="true" data-key="mxDate">2023.07—2024.06</span><span class="record-name" contenteditable="true" data-key="mxName">东方财富信息股份有限公司｜妙想大模型智能助手</span><span class="role" contenteditable="true" data-key="mxRole">后端负责人</span></div>
           <p class="meta" contenteditable="true" data-key="mxIntro"><b>项目简介：</b>基于自研大模型构建金融场景智能问答系统，支持股票数据、新闻数据、选股等复合能力。</p>
@@ -366,7 +383,15 @@
 
   <script>
     (() => {
-      const storageKey = "ruikang-resume-editor-v1";
+      const storageKey = "ruikang-resume-editor-v4";
+      const legacyStorageKeys = ["ruikang-resume-editor-v3", "ruikang-resume-editor-v2", "ruikang-resume-editor-v1"];
+      const revisedFields = new Set(["eastWork1", "eastWork2", "hp1", "hp7"]);
+      const replacedLegacyFields = new Set([
+        ...revisedFields,
+        "deepWork1", "deepWork2", "hpName", "hpRole", "hpIntro",
+        "hp1", "hp2", "hp3", "hp4", "hp5", "hp6", "hp7",
+        "agentIntro", "agent1", "agent2", "agent3", "agent4", "agent5", "agent6"
+      ]);
       const editable = [...document.querySelectorAll("[data-key]")];
       const portrait = document.querySelector("#portrait");
       const photoButton = document.querySelector("#photoButton");
@@ -387,15 +412,25 @@
 
       function restore() {
         try {
-          const saved = JSON.parse(localStorage.getItem(storageKey));
+          const current = localStorage.getItem(storageKey);
+          const legacyKey = legacyStorageKeys.find(key => localStorage.getItem(key));
+          const legacy = legacyKey ? localStorage.getItem(legacyKey) : null;
+          const replacedFields = legacyKey === "ruikang-resume-editor-v3" ? revisedFields : replacedLegacyFields;
+          const saved = JSON.parse(current || legacy || "null");
           if (!saved) return;
           editable.forEach(el => {
+            if (!current && replacedFields.has(el.dataset.key)) return;
             if (Object.prototype.hasOwnProperty.call(saved.fields || {}, el.dataset.key)) {
               el.innerHTML = saved.fields[el.dataset.key];
             }
           });
           if (saved.photo) portrait.src = saved.photo;
-          setStatus("已恢复本浏览器保存的编辑内容");
+          if (!current) {
+            save();
+            setStatus("已保留其他个人编辑，工作经历与普通作业指标已更新");
+          } else {
+            setStatus("已恢复本浏览器保存的编辑内容");
+          }
         } catch (_) {
           localStorage.removeItem(storageKey);
         }
@@ -424,7 +459,7 @@
         if (!window.confirm("恢复到初始内容？当前浏览器中的编辑内容会被清除。")) return;
         editable.forEach(el => { el.innerHTML = defaults[el.dataset.key]; });
         portrait.src = defaultPhoto;
-        localStorage.removeItem(storageKey);
+        save();
         setStatus("已恢复初始内容");
       });
 
