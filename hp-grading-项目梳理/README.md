@@ -1,5 +1,7 @@
 # 作业智能批改平台：项目梳理
 
+> 架构口径更新（2026-10-23）：以 [Agent 架构确认基线](agent-architecture-handoff.md) 为准。前端只访问 Java；Java 保存业务问答；Python 使用 LangChain `create_agent`（底层 LangGraph）及 PostgreSQL checkpointer。同步滚动摘要保存在 checkpoint，不另建摘要表。本文描述确认方案，不据此新增上线或个人成果声明。
+
 > 生成日期：2026-09-01  
 > 范围：`E:\project\hp-grading`、`E:\project\x_edu_ai` 与 `E:\project\chatbi` 的当前代码。  
 > 目的：沉淀真实、可追溯的项目基线，作为后续简历优化和面试准备的事实依据。

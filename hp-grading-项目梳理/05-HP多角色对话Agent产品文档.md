@@ -1,9 +1,11 @@
 # 05｜HP 多角色对话 Agent 产品文档
 
+> 架构口径更新（2026-10-23）：以 [Agent 架构确认基线](agent-architecture-handoff.md) 为准。前端只访问 Java；Java 保存业务问答；Python 使用 LangChain `create_agent`（底层 LangGraph）及 PostgreSQL checkpointer。同步滚动摘要保存在 checkpoint，不另建摘要表。本文描述确认方案，不据此新增上线或个人成果声明。
+
 > 文档类型：产品方案 / PRD 草案。  
-> 状态：产品形态、入口路由与 Tool 边界已收敛，进入实现架构设计阶段。  
-> 最后更新：2026-09-09。  
-> 事实边界：HP-Grading 的批改 Workflow 和领域数据是真实项目能力；本文描述的对话 Agent 是演进设计，未在原项目上线。
+> 状态：已上线项目的产品与技术整理，含后续演进讨论；当前 Agent 技术选型、会话/turn/checkpoint 设计与流式链路见第 16.4—16.8 节。
+> 最后更新：2026-10-20。
+> 事实与方案更新（2026-10-20 本人确认）：Agent 与 RAG 均已上线并向 100 多所学校开放；本文记录的是项目整理及确认的目标技术方案。Agent 使用 LangChain 的 `create_agent`，由其底层 LangGraph runtime 执行；应用不手写 `StateGraph` 节点和边，配置 PostgreSQL checkpointer。Java `SseEmitter` 流式链路仍按第 16.6 节执行。不能把本文中的候选方案或未来能力表述成已经上线。
 
 ## 1. 产品定义
 
@@ -193,7 +195,7 @@ Agent 统一编排业务工具、文档 RAG 和题目服务，但不是每个对
 
 因此，更准确的产品表述是：
 
-> 一套角色感知的智能助手平台：产品任务按钮执行固定 Workflow，其他自然语言统一进入当前角色 Agent，由 Agent 基于 checkpoint 保存的会话状态动态编排受控业务 Tool。
+> 一套角色感知的智能助手平台：产品任务按钮执行固定 Workflow，其他自然语言统一进入当前角色 Agent，由 Agent 基于会话历史和当前请求动态编排受控业务 Tool。
 
 ## 5. 不作为核心场景
 
@@ -455,25 +457,25 @@ Tool 是提供给 Agent 调用的稳定业务能力，不等同于把现有 Cont
 
 以下 17 项是产品能力盘点，用来检查数据和工程缺口，不代表必须注册成 17 个独立 Tool，更不代表每次模型调用都要暴露全部能力。相邻能力会在 12.5 中合并成更少的高层 Tool。
 
-| 编号 | Tool 建议名 | 主要角色 | 主要用途 | 关键输入 | 核心输出 |
-| --- | --- | --- | --- | --- | --- |
-| R01 | `list_accessible_contexts` | 全部 | 为直接聊天提供可选班级、孩子、作业和已批改题目 | 上下文类型；当前身份由服务端注入 | 有权限的对象列表及最近使用项 |
-| R02 | `search_homeworks` | 全部 | 按角色、时间、学科、班级、学生和状态查询作业 | 时间范围、学科、classId/studentId、状态 | 作业列表、提交/批改状态和关联 ID |
-| R03 | `get_homework_detail` | 教师、家长 | 查询作业名称、学科、班级、教师、时间、定标信息 | homeworkId | 作业基本信息与 labelingId |
-| R04 | `get_class_homework_analysis` | 教师 | 为讲评、备课和开放诊断提供一个或多个作业的班级分析 | classId；homeworkId/homeworkIds 或时间范围；学科与筛选条件 | 每次作业的平均得分率/正确率、题目/知识点/错因聚合、难度、样本量、可选数值差值和数据质量 |
-| R05 | 趋势解释能力（合并到 R04，不注册独立 Tool） | 教师 | 基于 R04 返回的多次作业分析判断改善、下降、偶发或证据不足 | R04 的 homeworkAnalyses[] 与教师问题 | 由模型生成的变化解释、依据和不确定性 |
-| R06 | `get_student_learning_report` | 家长 | 生成任意时间和学科范围的孩子学习报告 | studentId、时间范围、学科、排除条件 | 分数/正确率趋势、知识点、错因、代表题目 |
-| R07 | `get_class_benchmark` | 教师、家长 | 比较孩子或一次作业与班级整体表现 | classId、homeworkIds、题目/知识点范围 | 班级平均分、平均正确率、样本量和统计口径 |
-| R08 | `get_question_context` | 全部 | 获取题目事实，供讲评、答疑和报告下钻 | labelingQuestionId/questionId | 题干、blank、答案、解析、分数、知识点、难度 |
-| R09 | `get_student_question_review` | 学生、家长、教师 | 获取指定学生已批改题目的作答和批改详情 | studentId、studentHwId/reviewTaskId、questionId | 学生作答、逐空结果、评分、点评和图片 |
-| R10 | `get_error_reason_summary` | 教师、家长 | 按作业、学生、知识点、题目和时间聚合错因 | 范围、分组维度 | 错因数量、比例、关联题目和证据 ID |
-| R11 | `get_representative_answers` | 教师 | 为讲评挑选典型错误作答 | homeworkId、questionId、错误类型、数量 | 经授权的典型作答及选择依据 |
-| R12 | `list_pending_homeworks` | 家长 | 制定周末/假期计划时优先纳入学校已有任务 | studentId、计划周期、学科 | 未完成/待订正作业及截止时间 |
-| R13 | `recommend_questions` | 全部 | 按题目或知识点补充少量练习 | 原题/知识点、年级、难度、数量、排除项 | 推荐题和来源信息 |
-| R14 | `save_teaching_plan` | 教师 | 保存 Agent 共创的备课或讲评草案 | planDraft、关联班级/作业、版本 | planId、version、保存状态 |
-| R15 | `generate_teaching_plan_file` | 教师 | 将已确认草案渲染为新的 DOC/PDF 文件版本 | planId、version、格式、idempotencyKey | artifactId、异步任务状态和完成后的下载信息 |
-| R16 | `save_learning_plan` | 家长 | 保存或更新周末/假期学习计划 | studentId、planDraft、周期、version | planId、version、任务列表 |
-| R17 | `search_teaching_resources` | 教师、学生、家长 | 按需补充带引用的教学解释和资料 | 查询、年级、学科、教材版本、ACL | 证据片段和 citation；依赖后续 RAG |
+| 编号  | Tool 建议名                      | 主要角色     | 主要用途                            | 关键输入                                          | 核心输出                                          |
+| --- | ----------------------------- | -------- | ------------------------------- | --------------------------------------------- | --------------------------------------------- |
+| R01 | `list_accessible_contexts`    | 全部       | 为直接聊天提供可选班级、孩子、作业和已批改题目         | 上下文类型；当前身份由服务端注入                              | 有权限的对象列表及最近使用项                                |
+| R02 | `search_homeworks`            | 全部       | 按角色、时间、学科、班级、学生和状态查询作业          | 时间范围、学科、classId/studentId、状态                  | 作业列表、提交/批改状态和关联 ID                            |
+| R03 | `get_homework_detail`         | 教师、家长    | 查询作业名称、学科、班级、教师、时间、定标信息         | homeworkId                                    | 作业基本信息与 labelingId                            |
+| R04 | `get_class_homework_analysis` | 教师       | 为讲评、备课和开放诊断提供一个或多个作业的班级分析       | classId；homeworkId/homeworkIds 或时间范围；学科与筛选条件  | 每次作业的平均得分率/正确率、题目/知识点/错因聚合、难度、样本量、可选数值差值和数据质量 |
+| R05 | 趋势解释能力（合并到 R04，不注册独立 Tool）    | 教师       | 基于 R04 返回的多次作业分析判断改善、下降、偶发或证据不足 | R04 的 homeworkAnalyses[] 与教师问题                | 由模型生成的变化解释、依据和不确定性                            |
+| R06 | `get_student_learning_report` | 家长       | 生成任意时间和学科范围的孩子学习报告              | studentId、时间范围、学科、排除条件                        | 分数/正确率趋势、知识点、错因、代表题目                          |
+| R07 | `get_class_benchmark`         | 教师、家长    | 比较孩子或一次作业与班级整体表现                | classId、homeworkIds、题目/知识点范围                  | 班级平均分、平均正确率、样本量和统计口径                          |
+| R08 | `get_question_context`        | 全部       | 获取题目事实，供讲评、答疑和报告下钻              | labelingQuestionId/questionId                 | 题干、blank、答案、解析、分数、知识点、难度                      |
+| R09 | `get_student_question_review` | 学生、家长、教师 | 获取指定学生已批改题目的作答和批改详情             | studentId、studentHwId/reviewTaskId、questionId | 学生作答、逐空结果、评分、点评和图片                            |
+| R10 | `get_error_reason_summary`    | 教师、家长    | 按作业、学生、知识点、题目和时间聚合错因            | 范围、分组维度                                       | 错因数量、比例、关联题目和证据 ID                            |
+| R11 | `get_representative_answers`  | 教师       | 为讲评挑选典型错误作答                     | homeworkId、questionId、错误类型、数量                 | 经授权的典型作答及选择依据                                 |
+| R12 | `list_pending_homeworks`      | 家长       | 制定周末/假期计划时优先纳入学校已有任务            | studentId、计划周期、学科                             | 未完成/待订正作业及截止时间                                |
+| R13 | `recommend_questions`         | 全部       | 按题目或知识点补充少量练习                   | 原题/知识点、年级、难度、数量、排除项                           | 推荐题和来源信息                                      |
+| R14 | `save_teaching_plan`          | 教师       | 保存 Agent 共创的备课或讲评草案             | planDraft、关联班级/作业、版本                          | planId、version、保存状态                           |
+| R15 | `generate_teaching_plan_file` | 教师       | 将已确认草案渲染为新的 DOC/PDF 文件版本        | planId、version、格式、idempotencyKey              | artifactId、异步任务状态和完成后的下载信息                    |
+| R16 | `save_learning_plan`          | 家长       | 保存或更新周末/假期学习计划                  | studentId、planDraft、周期、version                | planId、version、任务列表                           |
+| R17 | `search_teaching_resources`   | 教师、学生、家长 | 按需补充带引用的教学解释和资料                 | 查询、年级、学科、教材版本、ACL                             | 证据片段和 citation；依赖后续 RAG                       |
 
 P0 应优先覆盖 R01—R10、R14—R16 所代表的产品能力，但实现时需要按场景合并，不逐项机械创建 Tool；R11—R13 按需接入，R17 属于 RAG 阶段。
 
@@ -703,7 +705,7 @@ public StudentQuestionContext execute(Input input, AuthContext auth) {
 
 如果某个现有接口已经同时满足“资源级鉴权、稳定且紧凑的 Schema、参数有界、错误明确、读写幂等、语义正好对应一个用户任务”，它可以近似一对一封装成 Tool。例如单作业详情和推荐题接口比较接近这种情况，但仍建议经过 Tool Executor，而不是把 Controller URL 和内部 DTO 直接交给模型。
 
-### 12.9 精简入口与 LangGraph 会话续接
+### 12.9 精简入口与基于会话历史的续接
 
 #### 12.9.1 取消独立意图路由
 
@@ -716,7 +718,7 @@ public StudentQuestionContext execute(Input input, AuthContext auth) {
 
 任意自由文本
 → 校验登录态并确定 TEACHER / STUDENT / PARENT AgentProfile
-→ 使用 sessionId/thread_id 调用同一个 LangGraph Agent
+→ 使用 conversationId 调用同一个 Agent Runtime
 → Agent 理解目标、调用 Tool、追问或结束
 ```
 
@@ -740,16 +742,16 @@ public StudentQuestionContext execute(Input input, AuthContext auth) {
 
 #### 12.9.3 缺少信息时如何续接
 
-自由文本一旦进入 Agent，后续追问不退出 Graph，也不转交给另一个分类器。LangGraph State 至少保存：
+自由文本一旦进入 Agent，后续追问不退出当前会话，也不转交给另一个分类器。Python 从同一 thread 的 checkpoint 恢复摘要后的消息状态，结合本轮页面上下文和登录身份构造模型输入：
 
 ```text
-messages
-authContextRef
-pageContext
-activeGoal
-knownConstraints
-lastToolObservations
-currentDraftRef
+checkpoint_messages（摘要后的 Agent state）
+auth_context（每次请求从可信登录态重新构造）
+page_context（每次请求按需加载）
+active_goal（可以从最近消息提取；重要任务约束可单独结构化保存）
+known_constraints（按业务需要持久化）
+last_tool_observations（只有后续需要复用时才保存引用或摘要）
+current_draft_ref（存在可修改产物时保存）
 ```
 
 例如：
@@ -758,18 +760,18 @@ currentDraftRef
 家长：分析一下孩子最近的学习
 → Agent 根据上下文发现时间和学科不明确
 → Agent：您更想看最近一周、一个月还是本学期？需要限定学科吗？
-→ 本轮结束，checkpoint 保存当前 State
+→ 助手追问作为普通消息落库，本轮结束
 
 家长：最近一个月，只看数学
-→ 使用同一个 thread_id 再次调用 Agent Graph
-→ checkpointer 恢复 State，并加入新消息
+→ 使用同一个 conversationId 发起新请求
+→ 以新 turn_id 发起请求；Python 以同一 thread_id 恢复 checkpoint，仅追加本轮新输入
 → Agent 调用 get_student_learning_report
 → 根据 observation 回答；必要时继续追问
 ```
 
 追问句由 Agent 生成。前端仍可把常用回答显示成快捷选项，但它们只是对 Agent 文本的结构化交互优化，不形成独立槽位路由系统。用户改变目标时，Agent 直接根据最新消息更新 `activeGoal`。
 
-LangGraph checkpoint 保存的是执行状态快照；产品会话表仍保存用户可见消息、会话标题和引用关系。两者使用同一个 `thread_id/sessionId` 关联，但不能把框架 checkpoint 当作聊天记录页面的数据源。
+普通的用户追问不视为挂起中的任务：模型已经生成追问并结束本轮，用户补充信息后作为新请求进入，依赖同一 thread 恢复的 Agent state 继续理解上下文；这一交互本身不要求 checkpoint。本项目仍决定配置 PostgreSQL checkpoint，以持久化 Agent thread 状态并支持后续恢复能力；后台续跑任务的发现、调度与聊天消息仍分别建模。
 
 #### 12.9.4 一套 Runtime，三个角色配置
 
@@ -785,7 +787,7 @@ Agent(role=PARENT)   → 家长 Prompt + 家长 Tool Set + 家长数据域
 
 ### 12.10 模型调用、会话保存与 Prompt Cache：概念澄清
 
-这里不应包装成三个独立的“高级架构能力”。对 HP 来说，核心事实很简单：模型本身没有可靠的业务记忆，后端保存会话记录，并在下一次模型调用时提供所需上下文。这是同一条多轮对话链路的两个环节。
+这里不应包装成三个独立的“高级架构能力”。对 HP 来说，核心事实很简单：模型本身没有可靠的业务记忆，Java 保存业务问答，Python 在下一次模型调用时从 PostgreSQL checkpoint 恢复 Agent state。这是同一条多轮对话链路的两个环节。
 
 #### 12.10.1 模型调用与后端会话保存是同一条链路
 
@@ -795,12 +797,13 @@ HP 的实现可以直接理解为：
 
 ```text
 用户发送消息
-→ 后端根据 sessionId 读取历史消息和当前业务上下文
+→ Java 登记本轮用户消息，转发当前输入和可信业务上下文
+→ Python 按稳定 thread_id 恢复 checkpoint；达到阈值时先同步摘要
 → 选择本轮允许使用的 Tool Schema
 → 裁剪并组装模型输入
 → 调用模型
 → 执行 Tool，必要时再次调用模型
-→ 保存用户消息、模型回复、Tool 调用与结果摘要
+→ Java 保存用户问题和最终回答；Python 由 checkpointer 保存含工具消息/摘要的 Agent state
 ```
 
 后端通常需要保存：
@@ -814,7 +817,7 @@ Tool 调用记录与必要结果摘要
 当前报告或计划草案
 ```
 
-“Agent Runtime”不是一种神秘的新技术，只是对执行 Agent 循环的后端代码的统称。除了会话保存，它还负责：选择 Tool、执行 Tool、把 observation 交回模型、限制最大调用次数、处理错误和判断本轮是否结束。第一版完全可以由一个普通 Spring Boot Agent Service 承担，不需要为了名字拆成独立平台。
+“Agent Runtime”不是一种神秘的新技术，只是对执行 Agent 循环的后端代码的统称。除了会话保存，它还负责：选择 Tool、执行 Tool、把 observation 交回模型、限制最大调用次数、处理错误和判断本轮是否结束。本方案由 Python create_agent 承担 Agent 循环，Java 保持前端唯一入口。
 
 #### 12.10.2 Tool Schema 是否每次传递
 
@@ -958,7 +961,7 @@ requestId 串联数据库、MQ、算法回调与审计
 产品与 Tool 讨论已经达到可以进入技术设计的程度，当前确定项如下：
 
 1. 产品任务按钮携带服务端预定义 `actionCode`，直接进入 Workflow；任何自由文本统一进入当前角色 Agent；
-2. 第一版不建设独立意图模型、Pattern 路由、`PendingRoute` 和专用分类模型，跨轮目标与约束由 LangGraph State/checkpoint 维护；
+2. 第一版不建设独立意图模型、Pattern 路由、`PendingRoute` 和专用分类模型；普通跨轮目标与约束由会话消息历史承接，确需稳定复用的业务约束再结构化保存；
 3. Agent 使用高层、角色化、带资源鉴权和聚合口径的读取 Tool，不原样暴露现有 Controller；
 4. 教师、学生、家长按登录角色获得不同 Tool Set，每次 Tool 执行前校验资源权限；
 5. 修改答案、分数、批改结果和重批不做 Agent Tool，也不开发跳转，只用文字引导现有功能；
@@ -970,7 +973,7 @@ requestId 串联数据库、MQ、算法回调与审计
 
 ```text
 服务边界：原 Java 领域服务与新增 Python AI 服务如何协作
-→ 请求链路：按钮 Workflow、Agent Loop 和 checkpoint 如何协作
+→ 请求链路：按钮 Workflow、Agent Loop、会话历史与任务状态如何协作
 → 会话模型：消息、摘要、页面上下文和保留周期
 → Tool Registry/Executor/Facade：接口、鉴权、超时和错误协议
 → 文件产物：草案、版本、异步渲染和对象存储
@@ -983,10 +986,11 @@ requestId 串联数据库、MQ、算法回调与审计
 
 | 现有技术 | 初步职责 |
 | --- | --- |
-| Python / FastAPI / LangGraph | Agent Loop、会话 State/checkpoint、Tool Executor、RAG 编排、流式输出和 AI 层权限预检 |
+| Python / FastAPI / LangChain `create_agent`（底层 LangGraph） | Agent Loop、会话上下文、Tool Executor、RAG 编排、流式输出和 AI 层权限预检；PostgreSQL checkpointer 持久化 Agent 线程状态 |
 | Java / Spring Boot（原 HP） | Domain Facade、业务聚合、权威数据访问与最终资源鉴权 |
 | MySQL | 会话/产物元数据、讲评和计划版本、任务状态、幂等记录 |
-| MongoDB | 对话消息、Tool Trace、较灵活的模型请求与结果摘要；是否采用需结合现有分片与查询方式确认 |
+| MongoDB | 保留原有题目详情、模型调用日志和可选 Trace；不承载本方案 checkpoint |
+| PostgreSQL | Python Agent checkpoint，包含摘要后的消息状态；框架管理基础设施表 |
 | Redis | 活跃会话缓存、短期页面上下文、分布式锁、限流和临时状态 |
 | RabbitMQ | DOC/PDF 异步生成和其他长任务通知 |
 | OSS/TOS | 版本化文件产物与限时下载地址 |
@@ -998,7 +1002,7 @@ requestId 串联数据库、MQ、算法回调与审计
 
 ### 13.1 综合结论：同一个独立 Python AI 应用层
 
-结合本文的多角色 Agent 和 RAG 文档中已经确定的资料解析、Hybrid Retrieval、LangGraph 编排与评测需求，推荐新增独立的 `hp-ai-assistant-service`，在同一个 Python 仓库中同时承载在线 Agent 与教学文档 RAG；原 Java HP 继续作为业务事实和批改 Workflow 的领域服务，ChatBI 继续作为确定性学情分析服务。
+结合本文的多角色 Agent 和 RAG 文档中已经确定的资料解析、Hybrid Retrieval 与评测需求，推荐新增独立的 `hp-ai-assistant-service`，在同一个 Python 仓库中同时承载在线 Agent 与教学文档 RAG；原 Java HP 继续作为业务事实和批改 Workflow 的领域服务，ChatBI 继续作为确定性学情分析服务。
 
 这修正了此前“新增独立 Java Agent 服务”的单独判断。只看 Agent Tool Calling，Java 完全可以完成；但把完整 RAG 需求纳入后，若在线 Agent 使用 Java、RAG 又使用 Python，会形成额外的 Java Agent → Python RAG 网络层，并重复模型网关、会话、Trace、Schema 和错误协议。Agent 本来就需要把 Domain Tools、Document Retriever 和 Question Retriever 组合进同一份 ContextPack，同一个 Python AI 应用层更简单。
 
@@ -1006,26 +1010,26 @@ requestId 串联数据库、MQ、算法回调与审计
 
 ```text
 教师端 / 学生端
-→ hp-ai-assistant-api（Python / FastAPI）
-   ├── Button Workflow API
-   ├── LangGraph Agent Runtime / Checkpointer
-   ├── AgentProfile：TEACHER / STUDENT / PARENT
-   ├── Tool Registry / Policy Guard
-   ├── Context Builder / Model Gateway
-   ├── Document Retriever / Reranker
-   ├── Teaching Plan / Artifact API
-   └── Trace / Evaluation Hooks
-        │
-        ├── HP Domain Facade API → 原 hp-grading-service
-        ├── Analysis Facade API → 原 chatbi-service
-        ├── Question/Recommendation API → 原题库能力
-        └── 教学资料索引 → HP 使用 VikingDB；RunHub 一期使用 PostgreSQL/pgvector
+→ HP Java API Gateway
+   ├── 登录态、角色和请求校验
+   ├── 对话接口：创建 SseEmitter 并立即返回
+   └── 有界后台线程池：调用 Python AI API 并读取其模型流
+       ├── 下游 SSE 可写时，通过 SseEmitter 推送文本
+       ├── 下游断开时，记录发送异常并继续读取上游流
+       └── 模型完成后，保存完整问答
+
+后台线程 → hp-ai-assistant-api（Python / FastAPI）
+   ├── LangChain create_agent / AgentProfile + PostgreSQL checkpointer
+   ├── Tool Registry / Policy Guard / Context Builder
+   ├── Model Gateway / Document Retriever / Reranker
+   ├── Teaching Plan / Artifact API / Trace / Evaluation Hooks
+   └── HP Domain Facade API、ChatBI、题库和教学资料索引
 
 同一 Python 仓库中的 ingestion-worker
 → PDF/Word/图片解析、OCR、分块、Embedding、索引、版本切换
 ```
 
-`api` 与 `worker` 共用代码仓库和数据模型，但作为两个进程/部署单元运行。在线 API 不执行耗时的批量解析和向量化，worker 不承载用户对话。
+Java API 对前端持有 SSE 连接；Java 后台线程单独消费 Python 返回的模型流。`emitter.send` 因客户端断开而失败时，异常不得终止上游流的读取，也不得取消 Python 请求；线程继续收齐模型输出并保存最终问答。Python `api` 与 `ingestion-worker` 共用代码仓库和数据模型，但作为两个进程/部署单元运行；在线 API 不执行耗时的批量解析和向量化，ingestion worker 不承载用户对话。
 
 ### 13.3 原 Java 领域与分析服务继续负责什么
 
@@ -1060,7 +1064,7 @@ Python 服务不能直连 HP/ChatBI 的业务表后绕过领域规则，而应�
 
 1. Agent 与 RAG 在线查询共享模型、上下文、Retriever、Reranker、Trace 和评测，放在同一语言和服务中更容易组合；
 2. 文档解析、Embedding、Reranker、RAG Evaluation 和 Milvus/VikingDB SDK 通常优先提供 Python 用法；
-3. LangChain `create_agent` 与 LangGraph 提供 Tool Loop、状态图、持久化、流式输出和失败恢复，适合 HP 的 Agent + 确定性 Workflow 混合编排；
+3. LangChain `create_agent` 提供高层 Agent Loop，底层使用 LangGraph runtime；PostgreSQL saver 持久化 Agent state/checkpoint，应用层仍负责会话/turn 业务记录、任务触发、重试和幂等；
 4. 原 Java 8/Spring Boot 2.3 栈过旧，不适合直接引入当前现代 Java Agent 框架；
 5. Python 服务与原 HP 通过稳定 Facade API 解耦，不要求升级核心批改链路；
 6. RunHub 可以真实实现同一套 Python Agent/RAG Harness，HP 与 RunHub 只替换 Domain Tool 和 Retriever Adapter。
@@ -1074,8 +1078,8 @@ Python 服务不能直连 HP/ChatBI 的业务表后绕过领域规则，而应�
 ```text
 Python 3.12
 FastAPI + Pydantic v2
-LangChain Core / create_agent
-LangGraph
+LangChain `create_agent`（底层 LangGraph runtime）
+PostgreSQL checkpoint integration（`langgraph-checkpoint-postgres`）
 SQLAlchemy 2 + Alembic
 Redis
 RabbitMQ + Celery
@@ -1088,14 +1092,14 @@ pytest + 自定义 Evaluation Harness
 
 | 环境 | 关系数据库 | 文档向量/Hybrid 检索 | 原因 |
 | --- | --- | --- | --- |
-| 原公司 HP 的合理演进 | 优先复用 MySQL；LangGraph checkpoint 可评估现有 Redis/MongoDB | 验证现有 VikingDB 后新建独立教学文档 Collection | 最少新增基础设施，不迁移原业务数据 |
+| 原公司 HP 的合理演进 | Java 管理业务历史；Python 新增 PostgreSQL checkpoint，原 MySQL/MongoDB 继续既有职责 | 验证现有 VikingDB 后新建独立教学文档 Collection | 新增 PostgreSQL 承载 Agent 状态，不迁移原业务数据 |
 | RunHub 可运行参考实现 | 复用现有 Supabase PostgreSQL | `pgvector + PostgreSQL keyword/全文检索 + RRF` | 资料规模尚小，减少新基础设施；先验证检索质量，再决定是否引入独立向量库 |
 
 两边保持相同的 `DocumentRetriever`、Tool Schema、ContextPack、权限字段、Trace 和评测方法，底层通过 `VikingDocumentRetriever` 或 `PgVectorDocumentRetriever` 适配。Milvus 保留为未来数据规模或检索性能证明有需要时的替换实现，不作为 RunHub 一期必选组件。
 
 ### 13.6 面试中的准确表达
 
-> HP 的核心批改系统是 Java 8/Spring Boot 2.3，继续负责业务事实、权限和可靠的异步批改 Workflow。新增的能力同时包含多角色 Agent、教学文档解析、Embedding、Hybrid Retrieval、Reranker 和 Evaluation，因此我把它设计为独立 Python AI 应用层，在同一仓库中使用 FastAPI、LangChain/LangGraph 承载在线 Agent 和 RAG，并拆分 API 与 ingestion worker 两个部署单元。它通过受控 Facade 调用原 Java 领域服务，不直连业务库。RunHub 再真实实现相同接口和 Harness，一期复用 Supabase PostgreSQL/pgvector，对应 HP 侧的 MySQL/VikingDB；两边替换存储适配器而不改变 Agent、Retriever 和评测协议。
+> HP 的核心批改系统是 Java 8/Spring Boot 2.3，继续负责业务事实、权限和可靠的异步批改 Workflow。新增能力包含多角色 Agent、教学文档解析、Embedding、Hybrid Retrieval、Reranker 和 Evaluation，因此新增独立 Python AI 应用层，在同一仓库中使用 FastAPI、LangChain `create_agent`（底层 LangGraph runtime）承载在线 Agent 和 RAG，并拆分 API 与 ingestion worker 两个部署单元。Agent 使用 PostgreSQL checkpointer；会话与单轮请求分别由 `conversation_id` 和 `turn_id` 标识，推荐 `thread_id = conversation_id`，见第 16.5 节。前端对话仍进入 Java API，由 Java Controller 创建并返回 `SseEmitter`，有界后台线程调用 Python AI API、读取模型流并转发给前端；下游断开时后台继续读取上游流并保存完整问答。checkpoint 提供持久化状态，但进程重启后的任务发现、重触发和幂等仍由应用层负责。Python Agent 通过受控 Facade 调用原 Java 领域服务，不直连业务库。RunHub 再真实实现相同接口和 Harness，一期复用 Supabase PostgreSQL/pgvector，对应 HP 侧的 MySQL/VikingDB；两边替换存储适配器而不改变 Agent、Retriever 和评测协议。
 
 ### 13.7 RunHub 真实代码交叉验证
 
@@ -1115,7 +1119,7 @@ RunHub 的合理落地形态是：在同一个代码仓库中新增一个可独�
 
 - 企业内部 Coding Agent、运维助手、研究助手、通用办公 Agent和快速 PoC，可以优先复用成熟 Agent/Harness；
 - 嵌入既有产品、面向外部用户、具有复杂领域权限和稳定数据口径的业务 Agent，通常仍要开发自己的业务应用层；
-- 使用 LangGraph 不等于从零自研 Agent。它是在复用状态、checkpoint 和执行图基础设施后，只开发 HP 特有的 Context、Tool、权限、UI 和评测；
+- 使用 Agent Runtime 不等于从零自研 Agent；无论采用框架还是应用层 Tool Loop，HP 仍需开发自己的 Context、Tool、权限、UI 和评测；
 - 直接套 Pi/Codex 也不等于零开发。真正上线仍要补身份、会话、业务 Tool、鉴权、事件适配、审计和评测。
 
 HP 属于第二类，不建议把 Coding Agent 改造成学生/家长/教师产品的核心 Runtime。
@@ -1150,7 +1154,7 @@ Pi/Codex 更接近“第二层已经完成，并附带一套面向代码/文件/
 4. **Runtime 嵌入**：通过 SDK、CLI 子进程或独立服务调用现成 Agent，把事件转发到自己的产品；
 5. **Fork 改造**：复制开源仓库，删除不需要的工具并增加自己的身份、会话和业务逻辑。
 
-前三种通常很快，但产品边界较浅；后两种经常已经接近二次开发，维护成本不一定低于使用 LangGraph/Pydantic AI 构建一个小而明确的领域 Agent。
+前三种通常很快，但产品边界较浅；后两种经常已经接近二次开发，维护成本不一定低于使用 Pydantic AI 或 LangChain Core 构建一个小而明确的领域 Agent。
 
 ### 14.4 以 Pi 套成 HP Agent，需要做什么
 
@@ -1196,26 +1200,25 @@ Trace、数据脱敏、Evaluation
 
 ### 14.6 LangChain 与 LangGraph 是否重复
 
-它们不是必须同时完整使用：
+它们不是必须同时完整使用；本方案使用 LangChain 高层 Agent API，并接受其底层 LangGraph runtime，但不手写图：
 
 ```text
 LangChain Core
   模型客户端、Message、Tool Schema、Retriever 适配
 
-LangGraph
-  State、节点/边、checkpoint、interrupt、失败恢复
+LangGraph（由 create_agent 底层使用）
+  State、节点/边、checkpoint、interrupt 编排 Runtime；HP 不手写 StateGraph
 ```
 
 HP/RunHub 不需要为了技术标签引入完整 LangChain 生态。精简方案是：
 
 ```text
 FastAPI + Pydantic
-LangGraph（状态与 checkpoint）
-LangChain Core 或模型厂商原生 SDK（二选一作为模型/Tool 适配）
-自研 HP/RunHub 的 Context Builder、Domain Tool、权限与 Evaluation
+LangChain create_agent + PostgreSQL checkpointer
+自研 HP/RunHub 的 Conversation Service、Domain Tool、权限、任务调度与 Evaluation
 ```
 
-如果第一版只有两三个只读 Tool、不需要暂停恢复、跨轮任务或复杂节点，也可以先使用模型原生 Function Calling/Pydantic AI；当多轮状态和人机确认真实出现时再引入 LangGraph。
+多轮对话本身不要求 checkpoint。用户补充信息时，以新的 `turn_id` 发起请求，并由 Python 恢复同一 thread 的 Agent state。项目选择 PostgreSQL checkpointer 是为了持久化 Agent 执行状态；它不会自动恢复重启前的后台任务。推荐 `thread_id = conversation_id`，同一聊天保持稳定；单轮执行另用 run_id。已确认的在线流式方案由 Java API 创建并返回 `SseEmitter`，将调用 Python AI 服务和消费模型流的工作放入 Java 有界后台线程池。前端断开时，捕获下游 `emitter.send` 异常但继续读取上游 Python 流，直至模型完成并保存最终回答；这仍不包含进程重启后的自动任务发现/重触发，也不补发断线期间错过的 token。
 
 ### 14.7 HP 的架构判断
 
@@ -1233,7 +1236,7 @@ HP 不应“从零造 Agent 框架”，也不应“给 Coding Agent 换个教�
 - 将 Controller 重构为少量高层 Domain Tool；
 - 用 AuthContext 和领域 Facade 实现两层鉴权；
 - 区分业务事实、教学资料 RAG 和模型解释；
-- 建立 checkpoint、上下文压缩、Trace、引用与 Evaluation Harness。
+- 建立会话历史、任务状态、上下文压缩、Trace、引用与 Evaluation Harness。
 
 ## 15. PoC、套壳边界与 Python Harness 参考
 
@@ -1279,7 +1282,7 @@ PoC 重点验证：模型会不会选对 Tool、能否正确补问范围、是�
 | --- | --- |
 | 模型适配与流式输出 | 教师、学生、家长的产品入口与引导 |
 | Tool Calling 循环 | HP/ChatBI Domain Tool 与 Facade |
-| State、checkpoint、失败恢复 | AuthContext、数据域鉴权与 Tool 白名单 |
+| Tool Calling 循环、模型适配 | AuthContext、数据域鉴权与 Tool 白名单 |
 | 消息结构与上下文处理钩子 | 业务事实、RAG 证据和模型结论的隔离 |
 | Trace、评测的基础能力 | 学情报告、讲题、备课文档等领域能力 |
 
@@ -1325,11 +1328,11 @@ Harness 文档：<https://pydantic.dev/docs/ai/harness/>
 
 它用较少代码实现 Multi-step Agent、ToolCallingAgent 和 CodeAgent。适合先看懂 `模型决策 → Tool 调用 → Observation → 再决策` 的循环，但它不是 HP 所需的完整会话、权限、checkpoint 和评测平台。
 
-#### E. LangGraph：更适合 HP 实际落地的 Runtime，而不是完整产品
+#### E. LangGraph：`create_agent` 使用的底层 Runtime
 
 官方仓库：<https://github.com/langchain-ai/langgraph>
 
-LangGraph 重点解决显式 State、节点/边、checkpoint、interrupt、恢复与事件流。它不像 Pi 或 Deep Agents 那样预设一个 Coding Agent 产品，因此更适合承载 HP 的“按钮 Workflow + 自由对话单 Agent”。
+LangGraph 提供显式 State、节点/边、checkpoint、interrupt、恢复与事件流。HP 使用 LangChain `create_agent`，因此底层会使用 LangGraph runtime 和 PostgreSQL checkpoint saver；业务代码不直接编排节点和边。普通追问仍以新 turn 结束本轮；服务重启后的任务发现与重触发由应用层任务状态和 worker/队列实现。
 
 ### 15.4 当前学习与落地顺序
 
@@ -1338,7 +1341,7 @@ LangGraph 重点解决显式 State、节点/边、checkpoint、interrupt、恢�
         ↓
 理解消息历史、Context、Memory 与评测
         ↓
-HP/RunHub 实现：FastAPI + Pydantic + LangGraph
+HP/RunHub 实现：FastAPI + Pydantic + LangChain create_agent + PostgreSQL checkpointer
         ↓
 Java/ChatBI 通过 Domain Facade 提供只读业务 Tool
 ```
@@ -1346,50 +1349,56 @@ Java/ChatBI 通过 Domain Facade 提供只读业务 Tool
 第一版不要同时把 Pydantic AI、Deep Agents、LangGraph 全部引入同一个项目。当前建议是：
 
 - **Pydantic AI Harness 用作源码和架构参考**；
-- **LangGraph 用作 HP/RunHub 的主要状态编排 Runtime**；
+- **HP/RunHub 使用 LangChain `create_agent` 与 PostgreSQL checkpointer；不手写 LangGraph 图，任务调度与幂等由应用层实现**；
 - **HP 的角色权限、业务 Tool、Context Builder、RAG Evidence 和 Evaluation 由项目自己实现**。
 
-## 16. FastAPI、Pydantic、LangGraph、LangChain 的职责边界
+## 16. FastAPI、Pydantic、LangChain Agent 与 LangGraph runtime 的职责边界
 
-### 16.1 先看四者在一条请求链路中的位置
+### 16.1 先看各层在一条请求链路中的位置
 
 ```text
 教师/学生端小程序
         ↓ HTTP/SSE
 HP Java Gateway / 登录体系
         ↓ 携带 userId、role、token、requestId
-FastAPI：Python AI 服务的网络入口
+Java Controller：创建并返回 SseEmitter
         ↓
-Pydantic：校验并构造 ChatRequest、AuthContext、AgentState
+有界后台线程池：调用 Python AI API，并持续读取其模型流
         ↓
-LangGraph：执行状态图，决定当前运行哪个节点、是否继续循环
+FastAPI：Python AI 服务的内部网络入口
         ↓
-LangChain Core / 模型适配包：统一 Message、模型调用、Tool Schema
+Pydantic：校验 Java 传来的请求、AuthContext 和上下文数据
+        ↓
+LangChain `create_agent`（底层 LangGraph runtime）：模型决策、执行获准 Tool、返回 Observation，直到回答或追问
         ↓ Tool Call
 HP/ChatBI Domain Facade：重新鉴权并查询真实业务数据
         ↓
 MySQL / MongoDB / Elasticsearch / VikingDB
+
+Python 模型流 → Java 后台线程
+        ├─ emitter 可写：通过 SseEmitter 推送文本片段
+        └─ 前端已断开：继续消费模型流，收齐后保存最终问答
 ```
 
-四者不是四套相互竞争的 Agent 框架：
+这几层各自负责不同边界：
 
 | 组件 | 一句话职责 | 在 HP 中的角色 |
 | --- | --- | --- |
-| FastAPI | 接收和返回网络请求 | AI 服务的 Controller/Gateway 层 |
-| Pydantic | 定义、校验、序列化数据 | DTO、Tool Schema、State Schema |
-| LangGraph | 管理 Agent 的状态和执行流程 | Agent Runtime / 状态机 |
-| LangChain Core | 统一模型、消息和 Tool 的调用方式 | 模型与 Tool 的适配层 |
+| Java Controller + SseEmitter | 接收前端请求并返回 SSE | 面向用户的 API 与流式响应层 |
+| FastAPI | 接收 Java 发来的内部 AI 请求并返回模型流 | Python AI 服务的内部 API 层 |
+| Pydantic | 定义、校验、序列化数据 | 内部请求 DTO、AuthContext、Tool Schema |
+| Java 后台线程池 | 调用 Python、消费上游模型流、推送 SSE、保存最终问答 | 与前端连接解耦的本轮执行器 |
+| Java Conversation Service | 加载会话消息、构造传给 Python 的上下文、保存用户输入和最终回答 | 会话持久化 |
+| LangChain `create_agent` + LangGraph runtime | 标准 Agent Loop、状态与 checkpoint；业务代码不手写节点/边 | Agent Runtime |
 
-### 16.2 FastAPI：Python AI 服务的 Web 外壳
+### 16.2 FastAPI：Python AI 服务的内部 Web 外壳
 
 FastAPI 可以类比 Spring Boot 中的 `Controller + 参数绑定 + 一部分 Filter/Interceptor + OpenAPI`。
 
-HP 中可由它提供：
+它面向 Java AI 调用层，不直接承担小程序的外层 SSE 连接。HP 中可由它提供：
 
 ```text
-POST /api/agent/chat
-GET  /api/agent/chat/{requestId}/events       SSE 流式返回
-GET  /api/agent/conversations
+POST /internal/agent/stream                   返回模型流供 Java 消费
 POST /api/workflows/learning-report
 POST /api/knowledge/documents                 RAG 资料入库
 GET  /health
@@ -1397,11 +1406,11 @@ GET  /health
 
 主要职责：
 
-- 接收 Java 服务或小程序网关发来的 HTTP 请求；
-- 解析 Header、token、requestId、conversationId；
+- 接收 Java API 后台线程发来的内部 HTTP 请求；
+- 接收并校验 Java 传入的 requestId、conversationId、turnId、AuthContext 和本轮上下文；
 - 通过依赖注入构造数据库连接、模型客户端和 AuthContext；
 - 做请求级认证、限流、异常转换和日志关联；
-- 通过 SSE 将模型文本、Tool 状态和文件生成进度流式返回；
+- 将模型输出以流式响应返回给 Java；Java 再通过 `SseEmitter` 推送给前端；
 - 自动生成 OpenAPI/Swagger 文档，便于 Java 与前端联调；
 - 承载健康检查和服务部署入口。
 
@@ -1428,6 +1437,7 @@ class AuthContext(BaseModel):
 
 class ChatRequest(BaseModel):
     conversation_id: str
+    turn_id: str
     message: str
     entry_context: dict | None = None
 
@@ -1455,114 +1465,121 @@ class Citation(BaseModel):
 
 Pydantic 能保证“`student_id` 是字符串、时间范围合法、role 只能取三个值”，但不能保证“当前家长有权访问这个 student_id”。后者必须由业务鉴权完成。
 
-### 16.4 LangChain：模型、Message 和 Tool 的统一适配层
+### 16.4 LangChain `create_agent`：使用高层 Agent API
 
-LangChain 是较高层的 Agent/LLM 应用框架。当前 LangChain Agent 本身运行在 LangGraph 之上。HP 如果自行设计 LangGraph，一般不需要大量使用完整 LangChain，而是选择：
-
-```text
-langchain-core
-+
-一个模型厂商适配包，例如 langchain-openai / langchain-anthropic
-```
-
-在 HP 中主要使用它的能力：
-
-1. **统一 Message**
-
-```text
-SystemMessage
-HumanMessage
-AIMessage
-ToolMessage
-```
-
-2. **统一模型调用接口**
+HP 使用 LangChain 的 `create_agent` 构造 Agent。`create_agent` 提供模型决策、Tool 调用和继续生成的标准循环，底层由 LangGraph runtime 执行；应用代码直接配置模型、Tools、提示词和 checkpointer，不手写 `StateGraph`、节点或边。
 
 ```python
-model.invoke(messages)
-model.ainvoke(messages)
-model.astream(messages)
+agent = create_agent(
+    model=model,
+    tools=tools,
+    system_prompt=system_prompt,
+    checkpointer=checkpointer,
+)
 ```
 
-切换不同厂商模型时，上层 Graph 和 Tool 不需要整体改写，但各厂商特有参数仍然需要适配和回归测试。
+LangChain 统一 Message、模型调用、Tool Schema、Tool Calling 和结构化输出接口。模型提出 Tool Call 后仍由 Python 服务端执行获准的函数；HP 业务权限、Controller 逻辑和领域数据聚合由 Java/应用层负责。
 
-3. **Tool Schema 与 Tool Calling**
+### 16.5 会话、运行、消息与 checkpoint 的标识
 
-将 Python 函数、名称、说明和 Pydantic 入参暴露给模型。模型返回的是“请求调用某个 Tool”，真正的 Python 函数仍由服务端执行。
+- `conversation_id`：Java 产品层整段聊天的稳定标识。
+- `thread_id`：LangGraph 状态分区键；推荐 `thread_id = conversation_id`，租户隔离时可加命名空间并保留映射。
+- `run_id`：一次 Agent 执行，每轮新建，用于追踪、幂等、取消和 SSE 关联。
+- `turn_id`：原文中的单轮业务标识；如保留，需与 run_id 明确关联，不能替代 thread_id。
+- `message_id`：一条用户消息或最终助手消息的唯一标识；一次 run 可有多条内部消息。
+- `checkpoint_id`：同一 thread 下某次状态快照的标识。
 
-4. **模型能力适配**
+Java 保存会话元数据、用户问题与最终回答，负责历史查询和展示；具体业务表字段、物理存储与落库时机待定。Python 使用 PostgreSQL checkpointer 保存 messages、工具消息、中间状态及摘要后的 state。两边用途不同，写入通常不是跨库原子事务，需通过关联键、幂等和补偿保证最终一致。
 
-包括 Tool Calling、Structured Output、Embedding、Retriever 等统一接口。
+### 16.6 PostgreSQL checkpoint、同步滚动摘要与 SSE
 
-LangChain 不应承担 HP 的业务权限、Controller 逻辑和领域数据聚合。也不应该为了使用 LangGraph，就把 LangChain 的所有 Loader、Chain、Memory、Agent 模板全部引入。
+Python 使用 `create_agent` 和 `SummarizationMiddleware`，配置 PostgreSQL checkpointer。middleware 在模型调用前检查上下文，达到阈值时同步摘要旧消息并保留近期窗口，然后继续本轮模型/工具执行。摘要更新 Agent state，再由 checkpointer 持久化；不另建业务摘要表。摘要发生时经 Python → Java → 前端 SSE 显示“正在压缩上下文”，接受首字延迟增加。
 
-### 16.5 LangGraph：Agent 的执行状态机和 Runtime
+后续轮次恢复同一 thread 的摘要后 state，只追加本轮输入，不默认回查 Java 全量历史。再次压缩按旧摘要与当前需要压缩的消息滚动推进。摘要不可逆，必要时从 Java 业务历史按需查原文；导入/重建状态需另行实现。
 
-LangGraph 是这四个组件中真正负责“Agent 现在执行到哪里、下一步做什么、失败后从哪里恢复”的部分。
-
-HP 可以定义如下 AgentState：
+以下仅为配置示意，版本、模型与参数必须在实现时核实：
 
 ```python
-class AgentState(TypedDict):
-    messages: list
-    auth_context: AuthContext
-    role_profile: str
-    entry_context: dict
-    tool_results: list
-    evidence_pack: list[Citation]
-    generated_artifact: dict | None
-    iteration_count: int
-    final_answer: str | None
+from langchain.agents import create_agent
+from langchain.agents.middleware import SummarizationMiddleware
+from langgraph.checkpoint.postgres import PostgresSaver
+
+with PostgresSaver.from_conn_string(POSTGRES_URI) as checkpointer:
+    # 初始化/迁移时执行，生产部署按锁定版本管理 schema。
+    checkpointer.setup()
+    agent = create_agent(
+        model=model,
+        tools=tools,
+        system_prompt=system_prompt,
+        middleware=[SummarizationMiddleware(
+            model=summary_model,
+            trigger=("fraction", 0.7),  # 候选示例，非已定参数
+            keep=("messages", 20),    # 消息数，不等于 20 轮
+        )],
+        checkpointer=checkpointer,
+    )
+    result = agent.invoke(
+        {"messages": [{"role": "user", "content": current_input}]},
+        config={"configurable": {"thread_id": conversation_id}},
+    )
 ```
 
-一个简化的自由对话 Graph：
+60%/70%、保留消息数、token_counter 与 trim_tokens_to_summarize 均待压测和版本核对；token 预算还需预留 system prompt、工具 schema 与生成空间。摘要输入裁剪上限不等于近期消息保留窗口。工具调用与结果应成对安全处理。摘要状态事件需应用层接入，不能假设 middleware 自动生成 SSE。
+
+同一 thread 的运行需要跨实例协调，不能假设 checkpointer 自动串行。排队/拒绝策略、锁或队列、租约、超时、取消和幂等仍待设计。摘要失败、checkpoint 写入失败、Java 最终回答写入失败需要可识别错误与补偿；禁止把摘要失败当成功。checkpoint 不自动发现并重触发未完成任务，也不自动重放 token。
+
+前端请求到达 Java API 后，Controller 创建 `SseEmitter`，提交生成任务到有界后台线程池，并立即返回 emitter。后台线程调用 Python AI API 的流式接口，逐段读取模型输出；前端连接正常时，通过 `emitter.send` 转发片段，同时在内存中累计完整回答。前端断开导致 `emitter.send` 抛异常时，只记录/吞掉下游发送错误，后台线程继续读取 Python 上游流，模型完成后保存最终回答。
+
+#### 已确认的 SSE 流式生成方式
 
 ```text
-START
-  ↓
-build_context：加载身份、页面上下文、必要历史
-  ↓
-call_model：让模型判断回答、追问或调用 Tool
-  ↓
-是否产生 Tool Call？
-  ├─ 是 → policy_guard → execute_tools → 写入 ToolMessage
-  │                                  ↓
-  │                              回到 call_model
-  └─ 否 → validate_answer → persist_turn → END
+前端 → Java Controller
+          ├─ 创建 SseEmitter 并返回
+          └─ 后台线程 → Python 流式 API → 模型
+                 ├─ emitter.send 成功：继续向前端推送
+                 └─ emitter.send 失败：停止推送，但继续读完整上游流并保存回答
 ```
 
-这就是 Agent Loop：
+这只保证 Java 实例存活期间，前端断开不会取消该轮生成；checkpoint 不会持久化每个 SSE token，也不让已经退出的 Java 后台线程自动存活。因此，客户端重连到其他实例后，可以在生成完成后通过 `turn_id` 读取已保存的完整回答。若要求进程重启后恢复未完成 turn，应用需依据任务表/队列重新触发 Agent，并使用该未完成任务所属的 `thread_id` 读取 checkpoint；若要求重连后补发已经错过的 token，还需另建共享事件存储和按序补发机制。当前 SSE 方案不要求 token 补发。
 
-```text
-模型决策
-→ Tool 执行
-→ Observation 返回模型
-→ 模型再次决策
-→ 直到给出最终答案或达到停止条件
+如果需要后台任务在进程重启后重试，应用层可以维护轻量任务记录：
+
+```json
+{
+  "task_id": "T123",
+  "conversation_id": "C456",
+  "turn_id": "U789",
+  "status": "running",
+  "attempt": 1,
+  "started_at": "...",
+  "last_heartbeat_at": "...",
+  "result_ref": null,
+  "error_code": null
+}
 ```
 
-LangGraph 主要提供：
+状态约定：
 
-- 用节点和边显式表示执行流程；
-- 在 State 中保存 messages、Tool 结果、引用和中间状态；
-- 按 `thread_id` 保存 checkpoint；
-- 服务重启或节点失败后从 checkpoint 恢复；
-- 用条件边决定继续调用 Tool、追问还是结束；
-- 支持流式事件；
-- 支持 interrupt，暂停等待人工输入或确认；
-- 支持确定性 Workflow 与开放式 Agent 节点组合。
+- `pending`：任务已创建，等待 worker；
+- `running`：worker 正在执行，配合心跳或租约识别超时任务；
+- `completed`：结果已持久化；
+- `failed`：执行失败，等待重试或人工处理。
 
-LangGraph 的 checkpoint 不等同于完整业务会话表。建议区分：
+服务重启后由 worker 启动扫描、队列重新投递或定时扫描超时任务，再使用任务记录中关联的 `thread_id` 读取 checkpoint 并重触发该 turn。若任务状态表和 checkpoint 更新时序不一致，应用需处理重复触发或恢复到最近完成步骤；只读查询可按策略重复执行，产物创建等写操作必须使用 `turn_id` 等幂等键。定时扫描不是必需条件：如果只需用户回来时续做，可在下一次请求中检查任务状态；如果用户离线后也必须完成，则需要后台 worker 和可靠触发机制。
+
+Java 与 Python 分别保存业务历史和 PostgreSQL Agent checkpoint：产品消息保存用户输入与最终回答；checkpointer 按 Agent 执行步骤保存恢复所需的状态。checkpoint 不等于完整的 token 事件流或业务任务调度。若需要后台续跑，还需保存任务状态并实现 worker/队列触发；若需要更细排障，再结合 Trace：
 
 | 数据 | 建议保存位置 |
 | --- | --- |
-| 会话标题、用户、角色、创建时间 | 业务 conversation 表 |
-| 用户消息、模型回答、引用、文件 | message/artifact 表 |
-| 某次 Graph 执行的节点状态 | LangGraph checkpointer |
-| 跨会话稳定的用户偏好 | 可选的长期 Memory Store |
+| 会话标题、用户、角色、创建时间；用户输入和最终回答 | Java 管理的业务历史表，字段与物理存储待定 |
+| Agent thread 的执行状态、消息状态、工具调用边界等 checkpoint | PostgreSQL checkpoint 基础设施表，由 `langgraph-checkpoint-postgres` saver 管理 |
+| 需要后台续跑的任务状态和幂等键 | MySQL 或 MongoDB；按查询和事务需求选择，Redis 可作缓存/锁而非唯一长期来源 |
+| 工具调用、耗时、错误、重试轨迹 | 日志/Trace；保存必要参数、结果摘要或业务结果引用 |
 | 分数、作业、知识点等真实事实 | HP/ChatBI 原业务数据库 |
 
-### 16.6 一轮家长对话中四者如何协作
+模型每次输入输出及工具输入输出不必全部作为产品消息长期保存。建议保存最终对话消息；保留 Tool 调用轨迹和必要的统计口径/结果引用以便排查与解释，并按敏感数据和保留期限要求决定是否保存完整内容。
+
+### 16.7 一轮家长对话中各层如何协作
 
 家长输入：
 
@@ -1571,49 +1588,53 @@ LangGraph 的 checkpoint 不等同于完整业务会话表。建议区分：
 执行过程：
 
 ```text
-1. FastAPI 接收请求，提取登录凭证、conversationId 和 requestId。
+1. Java Controller 接收请求，校验登录身份，创建并返回 `SseEmitter`，将本轮任务提交到后台线程池。
 
-2. Pydantic 校验 ChatRequest，并构造 AuthContext：
+2. Java Conversation Service 校验会话归属、登记本轮输入并转发；不默认回传全部历史；Pydantic 校验 Java 后台线程发给 FastAPI 的内部请求和 AuthContext：
    role=parent、userId=P1001、childId=S2001。
 
-3. LangGraph 从 conversationId 对应的 checkpoint 恢复 State，
-   运行 build_context 和 call_model 节点。
+3. Java 将本轮新消息、conversation_id、turn_id、页面上下文和可信 AuthContext 发给 Python Agent；同一会话复用 checkpoint 中的消息历史。
 
-4. LangChain 模型适配层把 System/Human Message 和家长允许使用的
-   Tool Schema 发给模型。
+4. LangChain `create_agent` 读取本次请求指定的 checkpoint thread，
+   将系统指令、应用传入的会话历史和家长允许使用的 Tool Schema 提供给模型。
 
 5. 模型发现“最近”范围不明确，先生成追问：
    “您想看最近一周还是一个月？需要只看数学吗？”
 
-6. 家长回答“最近一个月，只看数学”。LangGraph 继续同一 thread，
-   模型调用 get_student_homework_analysis。
+6. 助手追问作为 T1 的最终回答保存。家长回答“最近一个月，只看数学”后，
+   新请求使用新 turn_id=T2；Python 按 thread_id=C1 恢复 checkpoint，
+   再调用 get_student_homework_analysis。推荐 thread_id=conversation_id，同一会话保持稳定。
 
 7. Tool Executor 携带 AuthContext 调用 Java Domain Facade；
    Java 再次校验 P1001 是否仍绑定 S2001，然后查询 ChatBI/HP 数据。
 
-8. Pydantic 校验 Tool 返回的结构；LangGraph 将结果写入 ToolMessage，
-   再次运行模型节点。
+8. Pydantic 校验 Tool 返回结构；`create_agent` 将结果写入 Agent 状态并继续模型/工具循环，
+   checkpoint saver 持久化执行状态。
 
-9. 模型基于真实数据生成结论。FastAPI 用 SSE 逐段返回文本、引用和状态。
+9. 模型基于真实数据生成结论。Python FastAPI 将模型流返回给 Java 后台线程；Java 通过 `SseEmitter` 逐段推送文本、引用和状态。
 
-10. 业务表保存可展示的消息，LangGraph checkpointer 保存执行状态。
+10. Java 业务历史保存用户可见问答，Python PostgreSQL checkpoint 保存 Agent 执行及摘要状态。
+    若前端断开，Java 后台线程继续消费 Python 流并保存完整回答；Java 进程重启后的任务
+    发现和重新触发仍需应用层任务调度。
 ```
 
-### 16.7 哪些是必选，哪些可以替换
+### 16.8 哪些是必选，哪些可以替换
 
 | 组件 | 第一版建议 | 可否替换 |
 | --- | --- | --- |
 | FastAPI | 保留 | 可用 Flask、Django、Litestar，但没有必要 |
 | Pydantic | 保留 | FastAPI 已深度使用它，且 Tool Schema 很适合它 |
-| LangGraph | HP 正式方案保留；极小 PoC 可暂缓 | 可手写 Loop、Pydantic AI 或其他 Runtime |
-| 完整 LangChain | 不必完整引入 | 推荐只用 langchain-core、厂商适配包，或直接使用厂商 SDK |
+| LangGraph runtime | 通过 `create_agent` 间接使用 | 不手写 StateGraph；若未来需要定制状态图，可直接使用 LangGraph API |
+| LangChain | 使用 `create_agent` 与所需模型集成包 | 不需要引入全部生态组件 |
+| PostgreSQL checkpointer | 使用 `langgraph-checkpoint-postgres` | 可替换为其他实现 `BaseCheckpointSaver` 的持久化 saver |
 
 最精确的技术栈表达应调整为：
 
 ```text
 FastAPI + Pydantic
-+ LangGraph
-+ LangChain Core / 模型厂商原生 SDK（二选一或按需组合）
++ LangChain `create_agent`（底层 LangGraph runtime）
++ PostgreSQL checkpointer（`langgraph-checkpoint-postgres`）
++ Conversation Service + turn/task 调度 + Domain Tools + Worker
 ```
 
 如果采用 LangChain 适配方式，Python 依赖通常按需安装，而不是把所有生态组件装进来：
@@ -1622,13 +1643,12 @@ FastAPI + Pydantic
 fastapi
 uvicorn
 pydantic
-langgraph
-langchain-core
-某一个模型 provider package
-某一个 LangGraph checkpoint provider
+langchain
+langgraph-checkpoint-postgres
+模型 provider package
 ```
 
-### 16.8 这四个组件不会自动提供完整 RAG
+### 16.9 这些基础组件不会自动提供完整 RAG
 
 它们可以承载 RAG 流程，但还需要另外实现或选择：
 
@@ -1646,14 +1666,14 @@ langchain-core
 
 在 HP 中：
 
-- LangGraph 编排检索步骤；
+- Agent Loop 或确定性 Workflow 按需调用检索步骤；
 - LangChain Core 可以统一 Embedding/Retriever 接口，但不是必须；
 - Pydantic 定义 Document、Chunk、Evidence、Citation 数据结构；
 - FastAPI 提供资料上传、入库、检索和问答接口；
 - Elasticsearch/VikingDB 才真正保存并召回教学资料；
 - HP 自己实现 ACL、资料版本、删除同步和引用规则。
 
-### 16.9 Pydantic AI 的定位与替代关系
+### 16.10 Pydantic AI 的定位与替代关系
 
 `Pydantic AI` 是 Pydantic 团队开发的 Python Agent SDK，不等于数据校验库 `Pydantic`。它在 Pydantic 类型系统上提供：
 
@@ -1681,26 +1701,30 @@ agent.run(user_prompt, deps, message_history)
 → Pydantic 校验最终结构化输出
 ```
 
-它与现有方案不是叠加关系，而是两条可选路线：
+它与现有方案不是叠加关系，而是可替代的另一种 Agent Runtime；当前落地路线不采用它：
 
 ```text
-路线 A：FastAPI + Pydantic + LangGraph + LangChain Core/厂商 SDK
-路线 B：FastAPI + Pydantic + Pydantic AI
-         + 按需增加 Pydantic Graph 或 Durable Execution 引擎
+当前路线：FastAPI + Pydantic + LangChain `create_agent` + PostgreSQL checkpointer + 应用层会话与任务管理
+可选替代：FastAPI + Pydantic + Pydantic AI
 ```
 
 大致替代关系：
 
-| 原能力 | Pydantic AI 能否承担 |
+| 能力 | 本方案的实现方式 |
 | --- | --- |
-| Pydantic 数据校验 | 不能替代，Pydantic AI 建立在它之上 |
-| FastAPI HTTP/SSE 服务 | 不直接替代，可与 FastAPI 集成 |
-| LangChain 模型、Message、Tool 与简单 Agent Loop | 大部分可以替代 |
-| LangGraph 显式状态图、条件边、checkpoint 编排 | 简单 Agent 可不需要；复杂编排需用 Pydantic Graph、Durable Execution 或保留 LangGraph |
+| Pydantic 数据校验 | 使用 Pydantic |
+| 面向前端的 SSE | Java Controller + `SseEmitter`；生成逻辑由后台线程池执行 |
+| Python AI 服务流式响应 | FastAPI 返回给 Java 后台线程，由 Java 转发到前端 |
+| 模型、Message、Tool Calling | LangChain `create_agent` 与模型 provider 集成包 |
+| 普通多轮上下文 | 同一 thread 的 PostgreSQL checkpoint state + 同步滚动摘要 |
+| 后台任务重启后重试 | MySQL/MongoDB 任务状态 + worker/队列或定时扫描 + 幂等控制 |
+| Agent 状态 checkpoint | LangGraph runtime 通过 PostgreSQL saver 持久化；应用层负责任务发现/重触发 |
 
 对 HP 的判断：
 
-- 如果第一版重在少量只读 Tool、类型安全和快速开发，Pydantic AI 是更轻的选择；
-- 如果要把按钮 Workflow、自由对话、异步文件生成、暂停恢复和显式状态检查统一进一张可观测状态图，LangGraph 的表达更直接；
-- 不建议同一版本同时采用 Pydantic AI Agent Loop、LangChain Agent 和 LangGraph 自定义 Tool Loop，避免三层重复抽象；
+- HP 当前使用 LangChain `create_agent`，接受其底层 LangGraph runtime，并通过 PostgreSQL saver 持久化 Agent thread；应用代码不手写图；
+- `conversation_id` 标识完整聊天，每次提问使用新的 `turn_id`；追问结束当前 turn，用户补充后新建 turn 由 Python 恢复摘要后的 state；推荐 `thread_id = conversation_id`；
+- checkpoint 提供恢复状态，但不负责服务重启后的任务发现和重触发；需要该能力时由任务状态、worker/队列或扫描器实现，并为写操作设置幂等键；
+- 用户断网后，Java 后台线程继续消费 Python 模型流并保存完整回答；客户端可重连查询完整回答，不补发已错过的 token；
+- 不建议同一版本同时采用 Pydantic AI Agent Loop、LangChain Agent 和自定义 Tool Loop，当前选择 LangChain `create_agent`；
 - Pydantic AI Harness 适合作为 Memory、Context、安全、Trace 和 Evaluation 的参考，不代表 HP 必须采用其 Coding Agent 产品。

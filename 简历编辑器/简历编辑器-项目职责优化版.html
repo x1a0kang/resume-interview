@@ -1,0 +1,529 @@
+<!doctype html>
+<html lang="zh-CN"><head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>巨瑞康 简历编辑器 · 项目职责优化版</title>
+  <style>
+    :root {
+      --ink: #172033;
+      --muted: #647083;
+      --blue: #087fc1;
+      --line: #dbe2ea;
+      --canvas: #eef2f6;
+      --paper: #ffffff;
+      --a4-width: 210mm;
+      --a4-height: 297mm;
+    }
+
+    * { box-sizing: border-box; }
+
+    html { background: var(--canvas); }
+
+    body {
+      margin: 0;
+      color: var(--ink);
+      background: var(--canvas);
+      font-family: "Microsoft YaHei", "PingFang SC", "Noto Sans CJK SC", Arial, sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    button, input { font: inherit; }
+
+    .toolbar {
+      position: sticky;
+      z-index: 4;
+      top: 0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      min-height: 64px;
+      padding: 12px max(24px, calc((100vw - 1180px) / 2));
+      color: #eef7ff;
+      background: #101b2c;
+      box-shadow: 0 2px 16px rgba(15, 23, 42, .18);
+    }
+
+    .toolbar-title { display: flex; align-items: baseline; gap: 10px; }
+    .toolbar-title strong { font-size: 16px; letter-spacing: .03em; }
+    .toolbar-title span { color: #aab7c7; font-size: 12px; }
+    .toolbar-actions { display: flex; align-items: center; gap: 10px; }
+    .status { color: #aab7c7; font-size: 12px; white-space: nowrap; }
+
+    .action {
+      border: 1px solid rgba(255,255,255,.2);
+      border-radius: 7px;
+      padding: 9px 13px;
+      color: #edf6ff;
+      background: transparent;
+      cursor: pointer;
+      transition: background .16s ease, transform .16s ease;
+    }
+    .action:hover { background: rgba(255,255,255,.1); }
+    .action:active { transform: translateY(1px); }
+    .action.primary { border-color: var(--blue); background: var(--blue); color: white; }
+    .action.primary:hover { background: #056ea9; }
+
+    .editor-help {
+      width: min(var(--a4-width), calc(100vw - 36px));
+      margin: 22px auto 14px;
+      padding: 0 2px;
+      color: #657184;
+      font-size: 13px;
+      line-height: 1.55;
+    }
+    .editor-help b { color: #334155; }
+
+    .workspace { padding: 0 0 36px; }
+
+    .paper {
+      position: relative;
+      width: var(--a4-width);
+      min-height: var(--a4-height);
+      margin: 0 auto 20px;
+      padding: 10mm 15mm;
+      background: var(--paper);
+      box-shadow: 0 7px 30px rgba(15, 23, 42, .16);
+      font-size: 9.6pt;
+      line-height: 1.38;
+    }
+
+    .paper:last-child { margin-bottom: 0; }
+
+    .resume-header {
+      position: relative;
+      /* 照片保持右侧悬浮；教育标题可在照片下沿前开始，首行教育记录仍不会与照片重叠。 */
+      min-height: 21mm;
+      padding-right: 28mm;
+      margin-bottom: 1.5mm;
+    }
+
+    .name {
+      margin: 0 0 2mm;
+      font-size: 18pt;
+      font-weight: 800;
+      letter-spacing: .05em;
+      line-height: 1.08;
+      text-align: center;
+    }
+
+    .headline {
+      margin: 0;
+      font-size: 9.6pt;
+      font-weight: 700;
+      letter-spacing: .01em;
+      line-height: 1.4;
+      color: #263244;
+      text-align: center;
+    }
+
+    .contact-line {
+      margin: .7mm 0 0;
+      color: #263244;
+      font-size: 9.2pt;
+      line-height: 1.4;
+      text-align: center;
+    }
+
+    .photo-control {
+      position: absolute;
+      top: 0;
+      right: 0;
+      width: 21mm;
+      height: 27mm;
+      border: 0;
+      padding: 0;
+      overflow: hidden;
+      background: #dbeef7;
+      cursor: pointer;
+    }
+    .photo-control img { display: block; width: 100%; height: 100%; object-fit: cover; }
+    .photo-control::after {
+      position: absolute;
+      right: 0;
+      bottom: 0;
+      left: 0;
+      padding: 3px 2px;
+      color: white;
+      background: rgba(15, 35, 54, .72);
+      content: "更换照片";
+      font-size: 8px;
+      letter-spacing: .05em;
+      opacity: 0;
+      transition: opacity .16s ease;
+    }
+    .photo-control:hover::after, .photo-control:focus-visible::after { opacity: 1; }
+
+    .section { margin-top: 2.2mm; }
+    .section:first-of-type { margin-top: 0; }
+    .section-title {
+      margin: 0 0 2mm;
+      padding: .35mm 0 .35mm 3.2mm;
+      border-left: 1.15mm solid var(--blue);
+      color: var(--ink);
+      font-size: 13.2pt;
+      font-weight: 800;
+      letter-spacing: .02em;
+      line-height: 1.3;
+    }
+
+    .record { margin: 0 0 1.3mm; }
+    .record:last-child { margin-bottom: 0; }
+    .record-head {
+      display: grid;
+      /* 左右两列等宽，让中间列始终对齐页面中线。 */
+      grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+      column-gap: 3mm;
+      align-items: baseline;
+      margin-bottom: .5mm;
+      font-weight: 800;
+      line-height: 1.35;
+    }
+    .date { text-align: right; white-space: nowrap; }
+    .record-name { font-size: 10.35pt; text-align: left; }
+    .role { text-align: center; white-space: nowrap; }
+
+    .section[aria-label="项目经历"] .record-head {
+      grid-template-columns: minmax(0, 1fr) auto;
+    }
+    .section[aria-label="项目经历"] .record-name {
+      font-size: 11pt;
+    }
+    .page-two .section[aria-label="项目经历"] .record {
+      margin-bottom: 1.5mm;
+    }
+    .page-two .section[aria-label="项目经历"] .record-head {
+      margin-bottom: .5mm;
+    }
+
+    .education .record-head { grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); column-gap: 0; }
+    .education .record-name { position: relative; justify-self: start; text-align: left; }
+    .education .role { text-align: center; }
+    .education .date { text-align: right; }
+    /* 学校标签：小字号挂在名字右侧，不占用学历与日期列的空间。 */
+    .school-tag {
+      position: absolute;
+      left: 100%;
+      bottom: .12em;
+      margin-left: 1.4mm;
+      font-size: 7.4pt;
+      font-weight: 500;
+      letter-spacing: .02em;
+      white-space: nowrap;
+    }
+
+    .metric-pending { color: #9a4b0b; background: #fff2dc; }
+
+    .meta { margin: 0 0 .7mm; line-height: 1.38; }
+    .meta b { font-weight: 800; }
+
+    .bullets { margin: 0; padding-left: 4.4mm; }
+    .bullets li { margin: 0 0 .7mm; padding-left: .5mm; }
+    .bullets li:last-child { margin-bottom: 0; }
+    .bullets li::marker { color: var(--blue); font-size: 11px; }
+
+    .compact .record { margin-bottom: .9mm; }
+    .compact .record-head { margin-bottom: .3mm; }
+    .compact .bullets li { margin-bottom: .45mm; }
+    .page-two .compact .bullets li { margin-bottom: .1mm; }
+
+    .subtle { color: var(--muted); }
+    .personal { margin-top: 2.6mm; padding-top: 0; }
+    .paper.page-two { display: flex; flex-direction: column; }
+
+    [contenteditable="true"] {
+      border-radius: 2px;
+      outline: none;
+      transition: background .15s ease, box-shadow .15s ease;
+    }
+    [contenteditable="true"]:hover { background: rgba(8, 127, 193, .055); }
+    [contenteditable="true"]:focus {
+      background: rgba(8, 127, 193, .09);
+      box-shadow: 0 0 0 1px rgba(8, 127, 193, .35);
+    }
+
+    .print-note { display: none; }
+
+    @page { size: A4; margin: 0 !important; }
+    @media print {
+      html, body { width: var(--a4-width); background: white; }
+      .toolbar, .editor-help { display: none !important; }
+      .workspace { padding: 0; overflow: visible; }
+      .paper {
+        width: var(--a4-width);
+        /* 屏幕的 A4 卡片高度不参与打印分页，避免缩放后保留额外空白页。 */
+        min-height: 0;
+        height: auto;
+        margin: 0;
+        padding: 10mm 15mm;
+        overflow: visible;
+        box-shadow: none;
+      }
+      .paper.page-two { display: block; }
+      .paper + .paper { break-before: page; page-break-before: always; }
+      .paper:last-child { page-break-after: auto; break-after: auto; }
+      .record { break-inside: auto; page-break-inside: auto; }
+      .section-title { break-after: avoid; page-break-after: avoid; }
+      .record-head { break-after: avoid; page-break-after: avoid; }
+      [contenteditable="true"]:hover, [contenteditable="true"]:focus { background: transparent; box-shadow: none; }
+      .photo-control::after { display: none; }
+      .print-note { display: block; }
+      * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    }
+
+    @media screen and (max-width: 900px) {
+      .toolbar { align-items: flex-start; flex-direction: column; padding: 12px 18px; }
+      .toolbar-actions { width: 100%; flex-wrap: wrap; }
+      .status { width: 100%; order: 3; }
+      .paper { transform-origin: top center; }
+    }
+
+    @media screen and (max-width: 760px) {
+      .workspace { overflow-x: auto; padding: 0 18px 28px; }
+      .paper { margin-left: 0; margin-right: 0; }
+      .editor-help { width: 100%; }
+    }
+  </style>
+</head>
+<body>
+  <header class="toolbar">
+    <div class="toolbar-title">
+      <strong>简历编辑器</strong>
+      <span>项目职责优化版 · A4 导出</span>
+    </div>
+    <div class="toolbar-actions">
+      <span class="status" id="saveStatus">已自动保存到本浏览器</span>
+      <button class="action" id="resetButton" type="button">恢复初始内容</button>
+      <button class="action" id="saveHtmlButton" type="button">保存到 HTML</button>
+      <button class="action primary" id="pdfButton" type="button">导出 PDF</button>
+    </div>
+  </header>
+
+  <p class="editor-help"><b>使用方式：</b>直接点击简历中的文字即可编辑；右上角照片可上传或更换。点击“导出 PDF”后，在浏览器打印窗口选择“另存为 PDF”，纸张保持为 A4，照片会一并导出。<b>橙色“待补充”为尚缺真实数据的指标，请核实填写后再投递。</b></p>
+
+  <input id="photoInput" type="file" accept="image/*" hidden="">
+
+  <main class="workspace" id="resumeDocument">
+    <article class="paper page-one" data-page="1">
+      <header class="resume-header">
+        <h1 class="name" contenteditable="true" data-key="name">巨瑞康</h1>
+        <p class="headline" contenteditable="true" data-key="headline">Java 后端 / AI 应用工程师 ｜ 4 年经验 ｜ 上海</p>
+        <p class="contact-line" contenteditable="true" data-key="contact"><b>电话：</b>18810298505　｜　<b>邮箱：</b>ruikangju@163.com</p>
+        <button class="photo-control" id="photoButton" type="button" title="上传或更换照片">
+          <img id="portrait" src="assets/portrait.jpg" alt="巨瑞康证件照">
+        </button>
+      </header>
+
+      <section class="section compact education">
+        <h2 class="section-title" contenteditable="true" data-key="educationTitle">教育背景</h2>
+        <div class="record">
+          <div class="record-head"><span class="record-name" contenteditable="true" data-key="edu1School">北京理工大学<span class="school-tag">985</span></span><span class="role" contenteditable="true" data-key="edu1Degree">硕士</span><span class="date" contenteditable="true" data-key="edu1Date">2018.09—2021.06</span></div>
+        </div>
+        <div class="record">
+          <div class="record-head"><span class="record-name" contenteditable="true" data-key="edu2School">华东理工大学<span class="school-tag">211</span></span><span class="role" contenteditable="true" data-key="edu2Degree">本科</span><span class="date" contenteditable="true" data-key="edu2Date">2014.09—2018.06</span></div>
+        </div>
+      </section>
+
+      <section class="section">
+        <h2 class="section-title" contenteditable="true" data-key="experienceTitle">工作经历</h2>
+        <div class="record">
+          <div class="record-head"><span class="record-name" contenteditable="true" data-key="deepCompany">深启智能科技有限公司</span><span class="role" contenteditable="true" data-key="deepRole">AI 应用开发工程师</span><span class="date" contenteditable="true" data-key="deepDate">2025.08—2026.08</span></div>
+          <ul class="bullets">
+            <li contenteditable="true" data-key="deepWork1">负责慧批 AI 作业批改与智能学情平台的后端开发与维护，覆盖作业定标、批改链路、学情分析与周期报告。参与教学 Agent 与教学资源 RAG 的设计与开发，负责业务接口、数据协议及上线交付。</li>
+          </ul>
+        </div>
+        <div class="record">
+          <div class="record-head"><span class="record-name" contenteditable="true" data-key="eastCompany">东方财富信息股份有限公司</span><span class="role" contenteditable="true" data-key="eastRole">后端开发工程师</span><span class="date" contenteditable="true" data-key="eastDate">2021.07—2024.06</span></div>
+          <ul class="bullets">
+            <li contenteditable="true" data-key="eastWork1">负责证券业务创新方向的 AI 产品后端研发：主导大模型智能助手从 0 到 1 建设；负责需求评审与拆分、组内代码合并及管理、项目提测与发布等；获季度、年度 S 绩效及公司年度优秀员工（Top 1%）。</li>
+          </ul>
+        </div>
+      </section>
+
+      <section class="section">
+        <h2 class="section-title" contenteditable="true" data-key="skillsTitle">核心技能</h2>
+        <p class="meta" contenteditable="true" data-key="skills1"><b>Java 后端：</b>熟练使用 Java、Spring Boot 进行后端开发；掌握 Java 基础与集合框架，熟悉多线程开发、JVM 基础及性能监控；熟悉 Spring Cloud Alibaba、Nacos、MyBatis-Plus。</p>
+        <p class="meta" contenteditable="true" data-key="skills2"><b>AI 应用：</b>熟练使用 Python、FastAPI 构建 AI 应用服务；掌握 LangGraph Agent 工作流编排、工具调用与多轮会话，具备 RAG 文档处理、混合检索、重排及 VikingDB 向量检索实践；熟悉 LangChain Core、Pydantic 与 VLM/LLM 应用接入。</p>
+        <p class="meta" contenteditable="true" data-key="skills3"><b>数据与中间件：</b>熟练使用 MongoDB、MySQL、Redis、Kafka、RabbitMQ、ClickHouse、Elasticsearch，具备会话与缓存、异步消息、日志分析及数据仓库建设经验。</p>
+        <p class="meta" contenteditable="true" data-key="skills4"><b>工程与运维：</b>熟练使用 Linux、Git、SVN、Gradle、Maven、ELK、Prometheus 与 Grafana；掌握 Docker，熟悉 CI/CD 流程及项目部署、监控与日常运维。</p>
+      </section>
+
+      <section class="section" aria-label="项目经历">
+        <h2 class="section-title" contenteditable="true" data-key="projectsTitle">项目经历</h2>
+        <div class="record">
+          <div class="record-head"><span class="record-name" contenteditable="true" data-key="agentName">深启智能｜教学 Agent 与教学资源 RAG</span><span class="date" contenteditable="true" data-key="agentDate">2025.08—2026.08</span></div>
+          <p class="meta" contenteditable="true" data-key="agentIntro"><b>项目简介：</b>以慧批的批改与学情数据作为业务事实、教学资料作为讲解依据，面向教师备课讲评、学情分析、学生答疑与家长学情分析，开发教学 Agent 与教学资源 RAG 应用层，提供循环任务编排与工具调用、多轮对话、长期记忆和2W+份知识文档管理与检索。</p>
+          <p class="meta" contenteditable="true" data-key="agentStack"><b>技术栈：</b>Java、Python、Spring Boot、LangGraph、ReAct、SSE、BM25、RRF、Rerank、VikingDB</p>
+          <p class="meta" contenteditable="true" data-key="agentResponsibilities"><b>核心职责：</b></p>
+          <ul class="bullets">
+            <li contenteditable="true" data-key="agentDuty1"><b>Agent 任务编排：</b>基于 LangGraph、ReAct 与 Java/SSE，解决教学任务需多步调用、页面断连导致结果中断的问题，串联模型推理、工具执行与反馈，实现跨作业分析、教学答疑及断连后继续生成并保存结果；<span class="metric-pending">【待补充：日均任务量、断连续跑成功率】</span>。</li>
+            <li contenteditable="true" data-key="agentDuty2"><b>业务工具封装：</b>基于 Spring Boot 封装 Agent 业务工具，解决模型难以直接使用平台能力、计算口径不一致的问题，按用户角色开放批改、题目标注、学情统计、资料检索 <b>4 类能力</b>；由业务服务计算分数、正确率及错题分布，供模型生成与平台数据一致的分析。</li>
+            <li contenteditable="true" data-key="agentDuty3"><b>人工确认机制：</b>基于 LangGraph 与 Human-in-the-loop，解决模型直接调用修改类工具的误操作风险，在执行前暂停并展示待操作内容，用户确认后再继续执行，实现修改类业务的人工授权；<span class="metric-pending">【待补充：接入确认流程的工具数、拦截未授权调用数】</span>。</li>
+            <li contenteditable="true" data-key="agentDuty4"><b>任务状态恢复：</b>基于 LangGraph Checkpoint，解决人工确认后需重跑完整任务的问题，持久化暂停节点、对话上下文及待执行工具信息，实现确认后从暂停位置恢复并衔接后续推理；<span class="metric-pending">【待补充：任务恢复成功率、平均恢复耗时】</span>。</li>
+            <li contenteditable="true" data-key="agentDuty5"><b>教学资料入库：</b>基于 Python、Embedding 与 VikingDB，解决多格式教学资料难以统一检索的问题，构建 Word、PDF、PPT 解析、按章节及语义切分和向量入库链路，结合大模型处理表格与图片，保存教材版本、学科、年级、学期等元数据，支撑 <b>2W+ 份知识文档</b>的管理与检索。</li>
+            <li contenteditable="true" data-key="agentDuty6"><b>混合检索优化：</b>基于 BM25、Dense、RRF 与 Rerank，解决表述相近但知识点不同的资料干扰问题，通过双路召回、融合去重及精排，结合学段、学科、年级、教材版本过滤，为教学答疑提供相关资料；<span class="metric-pending">【待补充：Recall@K、重排前后命中率】</span>。</li>
+          </ul>
+        </div>
+      </section>
+    </article>
+
+    <article class="paper page-two" data-page="2">
+      <section class="section compact" aria-label="项目经历">
+        <h2 class="section-title" contenteditable="true" data-key="projectsContinueTitle">项目经历</h2>
+        <div class="record">
+          <div class="record-head"><span class="record-name" contenteditable="true" data-key="hpName">深启智能｜慧批 AI 作业批改与智能学情平台</span><span class="date" contenteditable="true" data-key="hpDate">2025.08—2026.08</span></div>
+          <p class="meta" contenteditable="true" data-key="hpIntro"><b>项目简介：</b>面向学校教学场景，提供纸质作业定标、识别、自动批改及结果回写功能；汇总得分、错题和知识点情况，支持学生与班级学情分析，帮助教师了解学习表现、调整教学。</p>
+          <p class="meta" contenteditable="true" data-key="hpStack"><b>技术栈：</b>Java、Spring Boot、MySQL、MongoDB、Redis、RabbitMQ、LLM</p>
+          <p class="meta" contenteditable="true" data-key="hpResponsibilities"><b>核心职责：</b></p>
+          <ul class="bullets">
+            <li contenteditable="true" data-key="hpDuty1"><b>知识点打标优化：</b>基于 Java 后端与大模型分层调用，解决每学科数百个知识点一次输入导致耗时长、易漏标的问题，改为每层筛选 <b>1—3 个节点</b>并逐层展开至叶子，实现题目知识点自动标注，单题平均耗时由<b>超过 2 分钟降至约 30 秒</b>。</li>
+            <li contenteditable="true" data-key="hpDuty2"><b>异步重批一致性：</b>基于 Java、RabbitMQ 与 version 校验，解决连续修改答案时异步回调乱序、旧结果覆盖新结果的问题，在结果回写前拦截过期版本，保证作业展示最新批改结果；上线后未再出现同类问题，<span class="metric-pending">【待补充：观察天数、拦截旧回调数】</span>。</li>
+            <li contenteditable="true" data-key="hpDuty3"><b>答题卡批改：</b>基于 Java、Spring Boot 与 PDF 导出，解决非标准试卷缺少答题卡批改能力的问题，根据作业识别结果生成答题卡，协同算法打通生成、识别、批改及结果回写，支持教师组织考试并回收批改结果；<span class="metric-pending">【待补充：覆盖教师数、累计批改答题卡数】</span>。</li>
+            <li contenteditable="true" data-key="hpDuty4"><b>采分点与多解法：</b>基于 Java、Spring Boot 与批改数据协议改造，解决局部步骤错误或非预设解法导致失分的问题，新增采分点及解法字段并联动前端、算法，实现先识别解法再按对应采分点评分，支持过程分与多解法批改；<span class="metric-pending">【待补充：相关误判反馈下降比例】</span>。</li>
+            <li contenteditable="true" data-key="hpDuty5"><b>学情分析 AI 建议：</b>基于 Java、MySQL、MongoDB 与大模型异步生成，解决作业数据分散、缺少作业后分析的问题，统计提交、得分、错题、知识点及学科素养，按<b>学生、班级、教师、学校、区域 5 个维度</b>聚合，提供周期报告、AI 学习与教学建议，并支持推荐练习及 PDF 导出。</li>
+            <li contenteditable="true" data-key="hpDuty6"><b>后台管理与维护：</b>基于 Java、Spring Boot、MySQL 与 MongoDB 全栈开发管理平台，解决教学配置、问题反馈和批改结果维护分散的问题，实现知识点与教材配置、反馈处理、答案修正及重批操作，供内部研发与运营<b>十余人</b>日常使用。</li>
+          </ul>
+        </div>
+
+        <div class="record">
+          <div class="record-head"><span class="record-name" contenteditable="true" data-key="mxName">东方财富｜妙想大模型智能助手</span><span class="date" contenteditable="true" data-key="mxDate">2023.07—2024.06</span></div>
+          <p class="meta" contenteditable="true" data-key="mxIntro"><b>项目简介：</b>基于自研大模型的金融场景智能问答系统，Agent规划模式，提供查股票数据、查新闻数据、选股等多种复合能力，自研大模型总结流式输出。</p>
+          <p class="meta" contenteditable="true" data-key="mxStack"><b>技术栈：</b>Java、Spring Boot、自研大模型、Agent、SSE、MongoDB、Redis、ClickHouse</p>
+          <p class="meta" contenteditable="true" data-key="mxResponsibilities"><b>核心职责：</b></p>
+          <ul class="bullets">
+            <li contenteditable="true" data-key="mxDuty1"><b>后端架构建设：</b>基于 Java、Spring Boot、MongoDB 与 Redis，解决金融智能问答缺少统一后端支撑的问题，主导问答、会话管理及业务服务集成从 0 到 1 建设，支撑系统于 <b>2024 年 1 月上线</b>，累计服务用户 <b>2W+</b>，日均处理 <b>2000+ 条消息</b>。</li>
+            <li contenteditable="true" data-key="mxDuty2"><b>Agent 任务编排：</b>基于自研大模型与 Agent 任务规划，解决复合金融问题无法通过单次查询完成的问题，识别用户意图、拆解任务并调度工具，结合多轮追问汇总回答，覆盖<b>股票查询、新闻查询、选股 3 类业务能力</b>。</li>
+            <li contenteditable="true" data-key="mxDuty3"><b>业务工具封装：</b>基于 Spring Boot 与工具执行类注册机制，解决金融接口分散、模型任务难以统一执行的问题，解析任务类型和参数并动态路由至工具实现，复用既有服务完成<b>股票查询、新闻检索、选股 3 类工具</b>的业务调用。</li>
+            <li contenteditable="true" data-key="mxDuty4"><b>流式交互控制：</b>基于 EventSource、SSE 与 Redis/Redisson 令牌桶，解决生成结果等待时间长、高频请求冲击模型服务的问题，实现逐步展示回答、主动停止生成及问答请求限流；<span class="metric-pending">【待补充：首字响应时间、限流阈值、峰值 QPS】</span>。</li>
+            <li contenteditable="true" data-key="mxDuty5"><b>分享与运营统计：</b>基于雪花算法、Base62、MongoDB 与 ClickHouse，解决问答结果分享及使用数据统计分散的问题，生成分享短链并定时整合问题、回答和反馈，构建分析宽表、自动生成报表推送工作群，支撑内容传播与运营分析；<span class="metric-pending">【待补充：短链访问量、报表准备耗时变化】</span>。</li>
+          </ul>
+        </div>
+
+        <div class="record">
+          <div class="record-head"><span class="record-name" contenteditable="true" data-key="serviceName">东方财富｜智能在线客服及资讯接口日志仓库</span><span class="date" contenteditable="true" data-key="serviceDate">2021.10—2023.07</span></div>
+          <p class="meta" contenteditable="true" data-key="serviceIntro"><b>项目简介：</b>建设智能在线客服及资讯接口日志仓库，支持模板问题自动回复、转人工排队与在线会话转接，并为算法训练和日志分析提供统一数据存储与查询能力。</p>
+          <p class="meta" contenteditable="true" data-key="serviceStack"><b>技术栈：</b>Java、Spring Boot、Redis、Kafka、ClickHouse、Flink</p>
+          <p class="meta" contenteditable="true" data-key="serviceResponsibilities"><b>核心职责：</b></p>
+          <ul class="bullets">
+            <li contenteditable="true" data-key="serviceDuty1"><b>客服会话与排队：</b>基于 Java、Spring Boot、Redis 排队队列与 IM 会话模块，解决咨询缺少自动应答、人工承接和会话转接的问题，实现模板回复、转人工排队与历史消息管理，覆盖<b>用户、机器人、人工客服 3 类参与方</b>的会话流转。</li>
+            <li contenteditable="true" data-key="serviceDuty2"><b>消息吞吐优化：</b>基于 Redis 分布式锁、Kafka 分区、批量消费与多线程，解决多实例重复请求客服、消息处理能力不足的问题，实现请求去重与消息并行处理，压测消息处理能力由<b>不足 100 TPS 提升至 6000+ TPS</b>。</li>
+            <li contenteditable="true" data-key="serviceDuty3"><b>日志仓库建设：</b>基于 ClickHouse，针对算法训练数据存储分散、查询慢的问题，调研 Hive、HBase、Vertica 等方案并主导选型落地，实现训练数据统一存储与分析查询，支撑<b>十亿级数据存储、毫秒级查询</b>。</li>
+            <li contenteditable="true" data-key="serviceDuty4"><b>实时数据整合：</b>基于 Kafka、Flink 与 ClickHouse，解决推荐日志、互动数据及画像分散、无法直接支撑训练分析的问题，构建流处理链路并整合用户与资讯画像生成宽表，沉淀部署、监控与操作规范，处理<b>日均 4000W+ 条日志</b>。</li>
+          </ul>
+        </div>
+      </section>
+    </article>
+  </main>
+
+  <script>
+    (() => {
+      const storageKey = "ruikang-resume-project-duties-20261027-v1";
+      const legacyStorageKeys = [];
+      // 此副本独立保存，不读取旧版缓存，避免覆盖新版项目职责。
+      const rewrittenFields = new Set();
+      const editable = [...document.querySelectorAll("[data-key]")];
+      const portrait = document.querySelector("#portrait");
+      const photoButton = document.querySelector("#photoButton");
+      const photoInput = document.querySelector("#photoInput");
+      const status = document.querySelector("#saveStatus");
+      const defaults = Object.fromEntries(editable.map(el => [el.dataset.key, el.innerHTML]));
+      const defaultPhoto = portrait.getAttribute("src");
+
+      function setStatus(message) {
+        status.textContent = message;
+      }
+
+      function save() {
+        const fields = Object.fromEntries(editable.map(el => [el.dataset.key, el.innerHTML]));
+        localStorage.setItem(storageKey, JSON.stringify({ fields, photo: portrait.src }));
+        setStatus("已自动保存到本浏览器");
+      }
+
+      function restore() {
+        try {
+          const current = localStorage.getItem(storageKey);
+          const legacyKey = legacyStorageKeys.find(key => localStorage.getItem(key));
+          const legacy = legacyKey ? localStorage.getItem(legacyKey) : null;
+          const saved = JSON.parse(current || legacy || "null");
+          if (!saved) return;
+          const fromLegacy = !current && Boolean(legacyKey);
+          editable.forEach(el => {
+            if (fromLegacy && rewrittenFields.has(el.dataset.key)) return;
+            if (Object.prototype.hasOwnProperty.call(saved.fields || {}, el.dataset.key)) {
+              el.innerHTML = saved.fields[el.dataset.key];
+            }
+          });
+          if (saved.photo) portrait.src = saved.photo;
+          if (fromLegacy) {
+            save();
+            setStatus("已保留其他个人编辑，工作与项目经历已更新");
+          } else {
+            setStatus("已恢复本浏览器保存的编辑内容");
+          }
+        } catch (_) {
+          localStorage.removeItem(storageKey);
+        }
+      }
+
+      editable.forEach(el => el.addEventListener("input", save));
+
+      photoButton.addEventListener("click", () => photoInput.click());
+      photoInput.addEventListener("change", event => {
+        const file = event.target.files && event.target.files[0];
+        if (!file) return;
+        if (!file.type.startsWith("image/")) {
+          setStatus("请选择图片文件");
+          return;
+        }
+        const reader = new FileReader();
+        reader.onload = () => {
+          portrait.src = reader.result;
+          save();
+          setStatus("照片已更新，导出 PDF 时会一并保留");
+        };
+        reader.readAsDataURL(file);
+      });
+
+      document.querySelector("#resetButton").addEventListener("click", () => {
+        if (!window.confirm("恢复到初始内容？当前浏览器中的编辑内容会被清除。")) return;
+        editable.forEach(el => { el.innerHTML = defaults[el.dataset.key]; });
+        portrait.src = defaultPhoto;
+        save();
+        setStatus("已恢复初始内容");
+      });
+
+      document.querySelector("#saveHtmlButton").addEventListener("click", () => {
+        const savedDocument = document.documentElement.cloneNode(true);
+        const savedFields = savedDocument.querySelectorAll("[data-key]");
+        savedFields.forEach((el, index) => {
+          if (editable[index]) el.innerHTML = editable[index].innerHTML;
+        });
+        const savedPortrait = savedDocument.querySelector("#portrait");
+        // 上传照片是 data URL，可直接保存在 HTML；默认照片保留相对路径，文件放回编辑器目录即可显示。
+        savedPortrait.setAttribute("src", portrait.getAttribute("src"));
+        const output = "<!doctype html>\n" + savedDocument.outerHTML;
+        const file = new Blob([output], { type: "text/html;charset=utf-8" });
+        const url = URL.createObjectURL(file);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = "简历编辑器-项目职责优化版.html";
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+        setStatus("已下载包含当前编辑内容的 HTML；放回编辑器目录即可继续使用");
+      });
+
+      document.querySelector("#pdfButton").addEventListener("click", () => {
+        setStatus("正在打开打印窗口，请选择“另存为 PDF”并确认纸张为 A4");
+        window.print();
+      });
+
+      window.addEventListener("afterprint", () => setStatus("编辑内容仍保存在本浏览器"));
+      restore();
+    })();
+  </script>
+
+
+
+</body></html>

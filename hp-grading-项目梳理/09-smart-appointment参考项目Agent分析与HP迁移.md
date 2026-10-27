@@ -1,5 +1,7 @@
 # 09｜Smart Appointment AI Agent 代码分析与 HP 迁移建议
 
+> 架构口径更新（2026-10-23）：以 [Agent 架构确认基线](agent-architecture-handoff.md) 为准。前端只访问 Java；Java 保存业务问答；Python 使用 LangChain `create_agent`（底层 LangGraph）及 PostgreSQL checkpointer。同步滚动摘要保存在 checkpoint，不另建摘要表。本文描述确认方案，不据此新增上线或个人成果声明。
+
 > 审阅对象：`E:\project\smart-appointment-ai-agent`，本地提交 `2bd2dba`。  
 > 审阅日期：2026-09-10。  
 > 目标：将该仓库作为 Agent 学习样本，区分可学习的设计思想、仅适用于 Demo 的实现，以及可以迁移到 HP 的工程能力。
@@ -309,7 +311,7 @@ Agent/RAG Evaluation
 | KnowledgeRetriever | `DocumentRetriever` 接口和 VikingDB Adapter | 保留抽象 |
 | Weather BaseTool | HP 高层 Domain Tool 的最小调用范例 | 学习 Tool Loop |
 | UserBehaviorAgent | ChatBI 确定性分析 + LLM 报告/计划 | 改名并复用业务层 |
-| InMemory history | MongoDB/PostgreSQL checkpointer + 会话业务表 | 替换 |
+| InMemory history | PostgreSQL checkpointer + 会话业务表 | 替换 |
 | default_user | 网关注入 AuthContext，Tool 端重新鉴权 | 替换 |
 | `[THOUGHT]` 输出 | 内部 Trace + 用户可读状态事件 | 替换 |
 

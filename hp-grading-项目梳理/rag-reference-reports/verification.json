@@ -1,0 +1,90 @@
+[
+  {
+    "file": "index.html",
+    "width": 1440,
+    "title": "两个 RAG 项目，一份 HP 对照报告 | RAG 源码研读",
+    "overflow": false,
+    "sections": 3,
+    "sourceDrawers": 0,
+    "brokenAnchors": [],
+    "errors": [],
+    "missingFiles": []
+  },
+  {
+    "file": "index.html",
+    "width": 390,
+    "title": "两个 RAG 项目，一份 HP 对照报告 | RAG 源码研读",
+    "overflow": false,
+    "sections": 3,
+    "sourceDrawers": 0,
+    "brokenAnchors": [],
+    "errors": [],
+    "missingFiles": []
+  },
+  {
+    "file": "modular-rag.html",
+    "width": 1440,
+    "title": "MODULAR-RAG-MCP-SERVER | RAG 源码研读",
+    "overflow": false,
+    "sections": 9,
+    "sourceDrawers": 19,
+    "brokenAnchors": [],
+    "errors": [],
+    "missingFiles": []
+  },
+  {
+    "file": "modular-rag.html",
+    "width": 390,
+    "title": "MODULAR-RAG-MCP-SERVER | RAG 源码研读",
+    "overflow": false,
+    "sections": 9,
+    "sourceDrawers": 19,
+    "brokenAnchors": [],
+    "errors": [],
+    "missingFiles": []
+  },
+  {
+    "file": "paismart.html",
+    "width": 1440,
+    "title": "PaiSmart：完整 RAG 产品链路 | RAG 源码研读",
+    "overflow": false,
+    "sections": 9,
+    "sourceDrawers": 21,
+    "brokenAnchors": [],
+    "errors": [],
+    "missingFiles": []
+  },
+  {
+    "file": "paismart.html",
+    "width": 390,
+    "title": "PaiSmart：完整 RAG 产品链路 | RAG 源码研读",
+    "overflow": false,
+    "sections": 9,
+    "sourceDrawers": 21,
+    "brokenAnchors": [],
+    "errors": [],
+    "missingFiles": []
+  },
+  {
+    "file": "hp-optimization.html",
+    "width": 1440,
+    "title": "HP RAG：参考与优化建议 | RAG 源码研读",
+    "overflow": false,
+    "sections": 8,
+    "sourceDrawers": 7,
+    "brokenAnchors": [],
+    "errors": [],
+    "missingFiles": []
+  },
+  {
+    "file": "hp-optimization.html",
+    "width": 390,
+    "title": "HP RAG：参考与优化建议 | RAG 源码研读",
+    "overflow": false,
+    "sections": 8,
+    "sourceDrawers": 7,
+    "brokenAnchors": [],
+    "errors": [],
+    "missingFiles": []
+  }
+]

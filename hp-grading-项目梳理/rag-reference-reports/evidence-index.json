@@ -1,0 +1,237 @@
+[
+  {
+    "report": "modular-rag.html",
+    "source": "别人的项目/MODULAR-RAG-MCP-SERVER/src/core/response/response_builder.py",
+    "line": 153
+  },
+  {
+    "report": "modular-rag.html",
+    "source": "别人的项目/MODULAR-RAG-MCP-SERVER/pyproject.toml",
+    "line": 26
+  },
+  {
+    "report": "modular-rag.html",
+    "source": "别人的项目/MODULAR-RAG-MCP-SERVER/src/libs/splitter/splitter_factory.py",
+    "line": 26
+  },
+  {
+    "report": "modular-rag.html",
+    "source": "别人的项目/MODULAR-RAG-MCP-SERVER/src/libs/vector_store/chroma_store.py",
+    "line": 29
+  },
+  {
+    "report": "modular-rag.html",
+    "source": "别人的项目/MODULAR-RAG-MCP-SERVER/src/ingestion/pipeline.py",
+    "line": 197
+  },
+  {
+    "report": "modular-rag.html",
+    "source": "别人的项目/MODULAR-RAG-MCP-SERVER/src/ingestion/pipeline.py",
+    "line": 438
+  },
+  {
+    "report": "modular-rag.html",
+    "source": "别人的项目/MODULAR-RAG-MCP-SERVER/src/ingestion/chunking/document_chunker.py",
+    "line": 169
+  },
+  {
+    "report": "modular-rag.html",
+    "source": "别人的项目/MODULAR-RAG-MCP-SERVER/src/core/query_engine/hybrid_search.py",
+    "line": 421
+  },
+  {
+    "report": "modular-rag.html",
+    "source": "别人的项目/MODULAR-RAG-MCP-SERVER/src/mcp_server/tools/query_knowledge_hub.py",
+    "line": 337
+  },
+  {
+    "report": "modular-rag.html",
+    "source": "别人的项目/MODULAR-RAG-MCP-SERVER/src/core/query_engine/query_processor.py",
+    "line": 210
+  },
+  {
+    "report": "modular-rag.html",
+    "source": "别人的项目/MODULAR-RAG-MCP-SERVER/src/ingestion/storage/vector_upserter.py",
+    "line": 162
+  },
+  {
+    "report": "modular-rag.html",
+    "source": "别人的项目/MODULAR-RAG-MCP-SERVER/src/ingestion/pipeline.py",
+    "line": 443
+  },
+  {
+    "report": "modular-rag.html",
+    "source": "别人的项目/MODULAR-RAG-MCP-SERVER/src/core/query_engine/fusion.py",
+    "line": 138
+  },
+  {
+    "report": "modular-rag.html",
+    "source": "别人的项目/MODULAR-RAG-MCP-SERVER/tests/fixtures/golden_test_set.json",
+    "line": 7
+  },
+  {
+    "report": "modular-rag.html",
+    "source": "别人的项目/MODULAR-RAG-MCP-SERVER/src/observability/evaluation/eval_runner.py",
+    "line": 346
+  },
+  {
+    "report": "modular-rag.html",
+    "source": "别人的项目/MODULAR-RAG-MCP-SERVER/src/libs/loader/pdf_loader.py",
+    "line": 251
+  },
+  {
+    "report": "modular-rag.html",
+    "source": "别人的项目/MODULAR-RAG-MCP-SERVER/src/libs/loader/file_integrity.py",
+    "line": 258
+  },
+  {
+    "report": "modular-rag.html",
+    "source": "别人的项目/MODULAR-RAG-MCP-SERVER/src/mcp_server/tools/query_knowledge_hub.py",
+    "line": 349
+  },
+  {
+    "report": "modular-rag.html",
+    "source": "别人的项目/MODULAR-RAG-MCP-SERVER/src/ingestion/transform/chunk_refiner.py",
+    "line": 134
+  },
+  {
+    "report": "paismart.html",
+    "source": "别人的项目/PaiSmart-main/pom.xml",
+    "line": 30
+  },
+  {
+    "report": "paismart.html",
+    "source": "别人的项目/PaiSmart-main/frontend/package.json",
+    "line": 65
+  },
+  {
+    "report": "paismart.html",
+    "source": "别人的项目/PaiSmart-main/src/main/java/com/yizhaoqi/smartpai/service/ParseService.java",
+    "line": 122
+  },
+  {
+    "report": "paismart.html",
+    "source": "别人的项目/PaiSmart-main/src/main/java/com/yizhaoqi/smartpai/service/reliability/FileProcessingOutboxService.java",
+    "line": 72
+  },
+  {
+    "report": "paismart.html",
+    "source": "别人的项目/PaiSmart-main/src/main/java/com/yizhaoqi/smartpai/consumer/FileProcessingConsumer.java",
+    "line": 67
+  },
+  {
+    "report": "paismart.html",
+    "source": "别人的项目/PaiSmart-main/src/main/java/com/yizhaoqi/smartpai/service/VectorizationService.java",
+    "line": 184
+  },
+  {
+    "report": "paismart.html",
+    "source": "别人的项目/PaiSmart-main/src/main/java/com/yizhaoqi/smartpai/service/chunk/ContextualChunkText.java",
+    "line": 16
+  },
+  {
+    "report": "paismart.html",
+    "source": "别人的项目/PaiSmart-main/src/main/java/com/yizhaoqi/smartpai/service/search/ParentContextExpander.java",
+    "line": 43
+  },
+  {
+    "report": "paismart.html",
+    "source": "别人的项目/PaiSmart-main/src/main/java/com/yizhaoqi/smartpai/config/ContextualRetrievalProperties.java",
+    "line": 18
+  },
+  {
+    "report": "paismart.html",
+    "source": "别人的项目/PaiSmart-main/src/main/java/com/yizhaoqi/smartpai/service/HybridSearchService.java",
+    "line": 152
+  },
+  {
+    "report": "paismart.html",
+    "source": "别人的项目/PaiSmart-main/src/main/java/com/yizhaoqi/smartpai/service/HybridSearchService.java",
+    "line": 383
+  },
+  {
+    "report": "paismart.html",
+    "source": "别人的项目/PaiSmart-main/src/main/java/com/yizhaoqi/smartpai/service/HybridSearchService.java",
+    "line": 275
+  },
+  {
+    "report": "paismart.html",
+    "source": "别人的项目/PaiSmart-main/src/main/java/com/yizhaoqi/smartpai/service/ChatHandler.java",
+    "line": 247
+  },
+  {
+    "report": "paismart.html",
+    "source": "别人的项目/PaiSmart-main/src/main/java/com/yizhaoqi/smartpai/service/AgentToolRegistry.java",
+    "line": 55
+  },
+  {
+    "report": "paismart.html",
+    "source": "别人的项目/PaiSmart-main/src/main/java/com/yizhaoqi/smartpai/service/citation/CitationVerificationService.java",
+    "line": 65
+  },
+  {
+    "report": "paismart.html",
+    "source": "别人的项目/PaiSmart-main/src/main/java/com/yizhaoqi/smartpai/service/eval/EvalCase.java",
+    "line": 10
+  },
+  {
+    "report": "paismart.html",
+    "source": "别人的项目/PaiSmart-main/src/main/java/com/yizhaoqi/smartpai/service/eval/RagEvalCaseRunner.java",
+    "line": 198
+  },
+  {
+    "report": "paismart.html",
+    "source": "别人的项目/PaiSmart-main/src/main/java/com/yizhaoqi/smartpai/service/index/KnowledgeIndexManager.java",
+    "line": 80
+  },
+  {
+    "report": "paismart.html",
+    "source": "别人的项目/PaiSmart-main/src/main/java/com/yizhaoqi/smartpai/service/search/ParentContextExpander.java",
+    "line": 81
+  },
+  {
+    "report": "paismart.html",
+    "source": "别人的项目/PaiSmart-main/src/main/java/com/yizhaoqi/smartpai/service/HybridSearchService.java",
+    "line": 408
+  },
+  {
+    "report": "paismart.html",
+    "source": "别人的项目/PaiSmart-main/src/main/resources/es-mappings/knowledge_base.json",
+    "line": 47
+  },
+  {
+    "report": "hp-optimization.html",
+    "source": "面试/hp-grading-项目梳理/06-HP教学资源RAG产品与技术方案.md",
+    "line": 1371
+  },
+  {
+    "report": "hp-optimization.html",
+    "source": "面试/hp-grading-项目梳理/06-HP教学资源RAG产品与技术方案.md",
+    "line": 1541
+  },
+  {
+    "report": "hp-optimization.html",
+    "source": "面试/hp-grading-项目梳理/06-HP教学资源RAG产品与技术方案.md",
+    "line": 1489
+  },
+  {
+    "report": "hp-optimization.html",
+    "source": "别人的项目/PaiSmart-main/src/main/java/com/yizhaoqi/smartpai/service/reliability/VectorizationLeaseService.java",
+    "line": 77
+  },
+  {
+    "report": "hp-optimization.html",
+    "source": "别人的项目/PaiSmart-main/src/main/java/com/yizhaoqi/smartpai/service/HybridSearchService.java",
+    "line": 236
+  },
+  {
+    "report": "hp-optimization.html",
+    "source": "别人的项目/PaiSmart-main/src/main/java/com/yizhaoqi/smartpai/service/search/ParentContextExpander.java",
+    "line": 60
+  },
+  {
+    "report": "hp-optimization.html",
+    "source": "别人的项目/PaiSmart-main/src/main/java/com/yizhaoqi/smartpai/service/eval/EvalCase.java",
+    "line": 34
+  }
+]
